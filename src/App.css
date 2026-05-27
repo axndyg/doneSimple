@@ -53,40 +53,20 @@
   overflow-y: auto;
 }
 
-/* Add task row */
-.add-task-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.add-task-row input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+/* Inline task description input */
+.task-desc-input {
+  width: 100%;
+  border: none;
+  background: transparent;
   font-size: 14px;
   font-family: inherit;
+  color: inherit;
   outline: none;
-  background: #fff;
+  padding: 0;
 }
 
-.add-task-row input:focus {
-  border-color: #aaa;
-}
-
-.add-task-row button {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 14px;
-  font-family: inherit;
-}
-
-.add-task-row button:hover {
-  background: #f0f0f0;
+.task-desc-input::placeholder {
+  color: #ccc;
 }
 
 /* Task table */
@@ -94,7 +74,16 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  table-layout: fixed;
 }
+
+.todo-table th:nth-child(2) { width: 110px; }
+.todo-table th:nth-child(3) { width: 70px; }
+.todo-table th:nth-child(4) { width: 40px; }
+
+.history-table th:nth-child(2) { width: 150px; }
+.history-table th:nth-child(3) { width: 100px; }
+.history-table th:nth-child(4) { width: 40px; }
 
 .task-table th {
   text-align: left;
@@ -116,6 +105,29 @@
 .delete-cell {
   width: 32px;
   text-align: right;
+}
+
+/* Add row (+) */
+.add-row {
+  cursor: pointer;
+}
+
+.add-row:hover td {
+  background: #fafafa;
+}
+
+.add-btn {
+  background: none;
+  border: none;
+  color: #bbb;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.add-btn:hover {
+  color: #555;
 }
 
 /* Recurring pill toggle */
@@ -140,7 +152,7 @@
 }
 
 /* Delete button (hover reveal) */
-.delete-btn {
+.delete-btn, .deleteHistory-btn {
   background: none;
   border: none;
   color: #ccc;
@@ -153,15 +165,81 @@
   color: #e53935;
 }
 
-/* Work tab */
+/* Work tab — vertical stack */
 .work-panel {
   display: flex;
-  gap: 0;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 480px;
+  margin: 0 auto;
+  
+}
+
+.work-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+
+}
+
+.timer-display {
+  font-size: 64px;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: #1a1a1a;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+  width: 260px;
+  text-align: center;
+}
+
+.timer-display:hover {
+  color: #555;
+}
+
+.timer-input {
+  font-size: 64px;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: #1a1a1a;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+  border: none;
+  border-bottom: 2px solid #ddd;
+  background: transparent;
+  outline: none;
+  text-align: center;
+  width: 260px;
+}
+
+.timer-adjust,
+.timer-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.timer-adjust button,
+.timer-controls button {
+  padding: 6px 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 64px;
+}
+
+.timer-adjust button:hover,
+.timer-controls button:hover {
+  background: #f0f0f0;
 }
 
 .work-tasks {
-  flex: 1;
-  padding-right: 40px;
+  border-top: 1px solid #eee;
+  padding-top: 24px;
 }
 
 .work-tasks h3 {
@@ -184,42 +262,7 @@
   color: #444;
 }
 
-.work-timer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 0 0 0 40px;
-  border-left: 1px solid #eee;
-  min-width: 220px;
-}
-
-.timer-display {
-  font-size: 52px;
-  font-weight: 300;
-  letter-spacing: 0.04em;
-  color: #1a1a1a;
-  font-variant-numeric: tabular-nums;
-}
-
-.timer-adjust,
-.timer-controls {
-  display: flex;
-  gap: 8px;
-}
-
-.timer-adjust button,
-.timer-controls button {
-  padding: 6px 14px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 13px;
-  font-family: inherit;
-}
-
-.timer-adjust button:hover,
-.timer-controls button:hover {
-  background: #f0f0f0;
+.empty-task {
+  color: #ccc;
+  font-style: italic;
 }

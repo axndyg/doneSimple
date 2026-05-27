@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
 
 type Tab = "todo" | "work" | "history";
@@ -7,6 +7,7 @@ interface Task {
   id: number;
   description: string;
   recurring: boolean;
+  num_repeated: number;
   done: boolean;
 }
 
@@ -17,23 +18,18 @@ interface HistoryEntry {
   recurrenceCount: number;
 }
 
-const sampleTasks: Task[] = [
-
-];
-
-const sampleHistory: HistoryEntry[] = [
-
-];
-
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>("todo");
-  const [tasks, setTasks] = useState<Task[]>(sampleTasks);
-  const [history, setHistory] = useState<HistoryEntry[]>(sampleHistory);
-  const [newTask, setNewTask] = useState("");
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [focusId, setFocusId] = useState<number | null>(null);
 
   const [timerSeconds, setTimerSeconds] = useState(30 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [timerEditing, setTimerEditing] = useState(false);
+  const [digitBuffer, setDigitBuffer] = useState<number[]>([0, 0, 0, 0]);
+  const timerInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -42,10 +38,18 @@ function App() {
     return () => clearInterval(id);
   }, [timerRunning, timerSeconds]);
 
+  useEffect(() => {
+    if (timerEditing) timerInputRef.current?.focus();
+  }, [timerEditing]);
+
   function addTask() {
-    if (!newTask.trim()) return;
-    setTasks(prev => [...prev, { id: Date.now(), description: newTask.trim(), recurring: false, done: false }]);
-    setNewTask("");
+    const id = Date.now();
+    setTasks(prev => [...prev, { id, description: "", recurring: false, done: false }]);
+    setFocusId(id);
+  }
+
+  function updateDescription(id: number, description: string) {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, description } : t));
   }
 
   function toggleRecurring(id: number) {
@@ -54,15 +58,15 @@ function App() {
 
   function toggleDone(id: number) {
     const task = tasks.find(t => t.id === id);
-    if (!task) return;
+    if (!task || !task.description) return;
     if (task.recurring) {
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, done: false } : t));
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, done: false, num_repeated: (t.num_repeated || 0)+1 } : t));
     } else {
       setHistory(prev => [...prev, {
         id: Date.now(),
         description: task.description,
         dateDone: new Date().toISOString().split("T")[0],
-        recurrenceCount: 1,
+        recurrenceCount: task.num_repeated || 1,
       }]);
       setTasks(prev => prev.filter(t => t.id !== id));
     }
@@ -70,6 +74,37 @@ function App() {
 
   function deleteTask(id: number) {
     setTasks(prev => prev.filter(t => t.id !== id));
+  }
+
+  function openTimerEdit() {
+    setTimerRunning(false);
+    const mm = Math.min(Math.floor(timerSeconds / 60), 99);
+    const ss = timerSeconds % 60;
+    setDigitBuffer([Math.floor(mm / 10), mm % 10, Math.floor(ss / 10), ss % 10]);
+    setTimerEditing(true);
+  }
+
+  function commitTimerEdit() {
+    setTimerEditing(false);
+    const total = (digitBuffer[0] * 10 + digitBuffer[1]) * 60 + (digitBuffer[2] * 10 + digitBuffer[3]);
+    if (total > 0) setTimerSeconds(total);
+  }
+
+  function handleTimerKey(e: React.KeyboardEvent) {
+    e.preventDefault();
+    if (e.key >= "0" && e.key <= "9") {
+      setDigitBuffer(prev => [...prev.slice(1), parseInt(e.key)]);
+    } else if (e.key === "Backspace") {
+      setDigitBuffer(prev => [0, ...prev.slice(0, 3)]);
+    } else if (e.key === "Enter") {
+      commitTimerEdit();
+    } else if (e.key === "Escape") {
+      setTimerEditing(false);
+    }
+  }
+
+  function clearHistory() { 
+    setHistory([]);
   }
 
   const minutes = String(Math.floor(timerSeconds / 60)).padStart(2, "0");
@@ -85,16 +120,7 @@ function App() {
 
       {activeTab === "todo" && (
         <div className="tab-content">
-          <div className="add-task-row">
-            <input
-              value={newTask}
-              onChange={e => setNewTask(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && addTask()}
-              placeholder="new task..."
-            />
-            <button onClick={addTask}>add</button>
-          </div>
-          <table className="task-table">
+          <table className="task-table todo-table">
             <thead>
               <tr>
                 <th>task</th>
@@ -110,7 +136,15 @@ function App() {
                   onMouseEnter={() => setHoveredRow(task.id)}
                   onMouseLeave={() => setHoveredRow(null)}
                 >
-                  <td>{task.description}</td>
+                  <td>
+                    <input
+                      className="task-desc-input"
+                      value={task.description}
+                      placeholder="task description"
+                      onChange={e => updateDescription(task.id, e.target.value)}
+                      ref={el => { if (el && task.id === focusId) { el.focus(); setFocusId(null); } }}
+                    />
+                  </td>
                   <td>
                     <button
                       className={`pill${task.recurring ? " pill-yes" : " pill-no"}`}
@@ -123,12 +157,18 @@ function App() {
                     <input type="checkbox" checked={task.done} onChange={() => toggleDone(task.id)} />
                   </td>
                   <td className="delete-cell">
-                    {hoveredRow === task.id && (
-                      <button className="delete-btn" onClick={() => deleteTask(task.id)}>✕</button>
-                    )}
+                    {hoveredRow === task.id
+                      ? <button className="delete-btn" onClick={() => deleteTask(task.id)}>✕</button>
+                      : null}
                   </td>
                 </tr>
               ))}
+              <tr className="add-row" onClick={addTask}>
+                <td colSpan={3}></td>
+                <td className="delete-cell">
+                  <button className="add-btn">+</button>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -136,36 +176,50 @@ function App() {
 
       {activeTab === "work" && (
         <div className="tab-content work-panel">
-          <div className="work-tasks">
-            <h3>recent tasks</h3>
-            <ul>
-              {tasks.filter(t => !t.done).slice(0, 5).map(t => (
-                <li key={t.id}>{t.description}</li>
-              ))}
-            </ul>
-          </div>
           <div className="work-timer">
-            <div className="timer-display">{minutes}:{seconds}</div>
+            {timerEditing ? (
+              <input
+                ref={timerInputRef}
+                className="timer-input"
+                value={`${digitBuffer[0]}${digitBuffer[1]}:${digitBuffer[2]}${digitBuffer[3]}`}
+                readOnly
+                onBlur={commitTimerEdit}
+                onKeyDown={handleTimerKey}
+              />
+            ) : (
+              <div className="timer-display" onClick={openTimerEdit} title="click to set time">
+                {minutes}:{seconds}
+              </div>
+            )}
             <div className="timer-adjust">
-              <button onClick={() => setTimerSeconds(s => Math.max(300, s - 300))}>−5m</button>
               <button onClick={() => setTimerSeconds(s => s + 300)}>+5m</button>
+              <button onClick={() => setTimerSeconds(s => Math.max(300, s - 300))}>−5m</button>
             </div>
             <div className="timer-controls">
               <button onClick={() => setTimerRunning(r => !r)}>{timerRunning ? "pause" : "start"}</button>
               <button onClick={() => { setTimerRunning(false); setTimerSeconds(30 * 60); }}>reset</button>
             </div>
           </div>
+          <div className="work-tasks">
+            <h3>recent tasks</h3>
+            <ul>
+              {tasks.filter(t => !t.done).slice(0, 5).map(t => (
+                <li key={t.id}>{t.description || <span className="empty-task">unnamed task</span>}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 
       {activeTab === "history" && (
         <div className="tab-content">
-          <table className="task-table">
+          <table className="task-table history-table">
             <thead>
               <tr>
                 <th>task</th>
                 <th>date completed</th>
                 <th>times done</th>
+                <th><button className="delete-btn clearHistory" onClick={() => clearHistory()}>✕</button></th>
               </tr>
             </thead>
             <tbody>
