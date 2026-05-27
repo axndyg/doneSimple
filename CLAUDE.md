@@ -77,21 +77,35 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 > user instruction.
 
 ### Accomplished
-- [ ] To be populated
+- [x] Three-tab UI scaffold replacing Tauri boilerplate
+- [x] Inline editable task descriptions, + row to add tasks
+- [x] Recurring pill toggle, done checkbox with archive logic, hover-reveal ✕ delete
+- [x] Recurring tasks: strikethrough on done, num_repeated toggle, end-of-day auto-reset framework
+- [x] Work tab: typeable countdown timer with +/−5m, start/pause/reset, audio alarm at 0
+- [x] Work tab: recent tasks list (up to 5) with quick ✓ done, session-dismiss for recurring
+- [x] History tab: append-only log with clear button
+- [x] Sticky table headers, scrollable rows, fixed column widths (no layout shift)
+- [x] Window minimum size: 650×450px enforced via tauri.conf.json
+- [x] SQLite stub (src/db.ts): full schema + all queries commented-in, ready to wire
 
 ### Problems to Polish
-- [ ] To be populated
+- [ ] workDismissed (recurring tasks hidden from work tab) resets on restart — resolved by SQLite integration
+- [ ] No visual feedback when done is denied on an unnamed task
 
 ### Future Steps
-- Initialize Tauri + React + TypeScript project scaffold
-- Implement SQLite schema and tauri-plugin-sql integration
-- Build to do tab: task table, checkbox logic, recurring reset, hover delete
-- Build work tab: recent task panel, countdown timer, break suggestions
-- Build history tab: append-only completed task log
-- Wire persistent storage to all UI state
+1. Integrate SQLite (src/db.ts) for cross-session state persistence
+2. Add individual row removal from history tab
+3. **(Priority)** Recommendations/reminders overlay on timer completion — pre-built + user-defined options, dismiss/clear returns to base work tab
+4. Dark mode toggle on tab bar, far right opposite the three tabs
+5. CSV export for history tab
 
 ## Session History
 ### Session 1 — 2026-05-25
 Initial generation. Project defined from scratch: doneSimple desktop app,
 Tauri + React + TypeScript stack confirmed, SQLite persistence, three-tab
 UI layout finalized from user wireframes.
+
+### Session 2 — 2026-05-26
+Built full UI from scratch. All three tabs functional with in-memory state.
+Recurring done behavior (strikethrough, count toggle, end-of-day reset framework),
+timer alarm, SQLite stub with schema. Five future steps logged and prioritized.

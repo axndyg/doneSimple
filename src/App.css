@@ -302,6 +302,11 @@
   color: #388e3c;
 }
 
+.row-done .task-desc-input {
+  text-decoration: line-through;
+  color: #bbb;
+}
+
 .empty-task {
   color: #ccc;
   font-style: italic;

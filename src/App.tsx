@@ -9,6 +9,7 @@ interface Task {
   recurring: boolean;
   num_repeated: number;
   done: boolean;
+  doneDate?: string; // date task was checked done (YYYY-MM-DD), for end-of-day reset
 }
 
 interface HistoryEntry {
@@ -34,10 +35,33 @@ function App() {
 
   useEffect(() => {
     if (!timerRunning) return;
-    if (timerSeconds === 0) { setTimerRunning(false); return; }
+    if (timerSeconds === 0) { setTimerRunning(false); playAlarm(); return; }
     const id = setInterval(() => setTimerSeconds(s => s - 1), 1000);
     return () => clearInterval(id);
   }, [timerRunning, timerSeconds]);
+
+  // End-of-day reset: uncheck recurring tasks whose doneDate is before today
+  useEffect(() => {
+    const checkDayReset = () => {
+      const today = new Date().toISOString().split("T")[0];
+      setTasks(prev => prev.map(t => {
+        if (t.recurring && t.done && t.doneDate && t.doneDate !== today) {
+          return { ...t, done: false, doneDate: undefined };
+          // TODO: persist reset to SQLite
+        }
+        return t;
+      }));
+    };
+    checkDayReset();
+    const id = setInterval(checkDayReset, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // TODO: load tasks and history from SQLite on mount
+  // useEffect(() => {
+  //   db.loadTasks().then(rows => setTasks(rows));
+  //   db.loadHistory().then(rows => setHistory(rows));
+  // }, []);
 
   useEffect(() => {
     if (timerEditing) timerInputRef.current?.focus();
@@ -61,7 +85,20 @@ function App() {
     const task = tasks.find(t => t.id === id);
     if (!task || !task.description) return;
     if (task.recurring) {
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, done: false, num_repeated: (t.num_repeated || 0)+1 } : t));
+      const today = new Date().toISOString().split("T")[0];
+      if (!task.done) {
+        // Checking: strike row, increment count, record date
+        setTasks(prev => prev.map(t => t.id === id
+          ? { ...t, done: true, num_repeated: t.num_repeated + 1, doneDate: today }
+          : t));
+        // TODO: persist to SQLite
+      } else {
+        // Unchecking manually: unstrike, undo the increment
+        setTasks(prev => prev.map(t => t.id === id
+          ? { ...t, done: false, num_repeated: Math.max(0, t.num_repeated - 1), doneDate: undefined }
+          : t));
+        // TODO: persist to SQLite
+      }
     } else {
       setHistory(prev => [...prev, {
         id: Date.now(),
@@ -121,6 +158,20 @@ function App() {
     }
   }
 
+  function playAlarm() {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 2);
+  }
+
   function clearHistory() { 
     setHistory([]);
   }
@@ -152,6 +203,7 @@ function App() {
               {tasks.map(task => (
                 <tr
                   key={task.id}
+                  className={task.done ? "row-done" : ""}
                   onMouseEnter={() => setHoveredRow(task.id)}
                   onMouseLeave={() => setHoveredRow(null)}
                 >
