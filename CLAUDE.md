@@ -105,6 +105,7 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 ### Problems to Polish
 - [ ] workDismissed (recurring tasks hidden from work tab) resets on restart — resolved by SQLite integration
 - [ ] No visual feedback when done is denied on an unnamed task
+- [ ] a recurring task completed in the work tab will not mark it as done in the main tab 
 
 ### Future Steps
 1. Integrate SQLite (src/db.ts) for cross-session state persistence
