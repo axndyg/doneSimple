@@ -98,6 +98,8 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 3. **(Priority)** Recommendations/reminders overlay on timer completion — pre-built + user-defined options, dismiss/clear returns to base work tab
 4. Dark mode toggle on tab bar, far right opposite the three tabs
 5. CSV export for history tab
+6. Add doneSimple logo 
+7. Add doneSimple documentation for the README.md + how to download locally
 
 ## Session History
 ### Session 1 — 2026-05-25
