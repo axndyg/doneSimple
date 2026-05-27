@@ -24,6 +24,20 @@ list and wait for explicit approval before writing.
 - Default (all other tasks) → claude-sonnet-4-5
 Basis: generator-recommended. User retains authority to override any assignment.
 
+## Learner Context
+User background: HTML/CSS fluent; JavaScript, TypeScript, React, and Tauri are
+new territory. Full learning observations, concept log, and session growth:
+see [TAKEAWAYS.md](TAKEAWAYS.md) — update it when new concepts are introduced
+or understanding is demonstrated through dialogue.
+
+When writing or explaining code in this project:
+- Briefly explain *why* a pattern is used, especially for React-specific concepts
+  (state, effects, props, event handlers) — one sentence is enough
+- Relate new concepts to HTML/CSS equivalents where natural
+- Flag first-time concepts inline: "New concept: X — plain-English explanation"
+- Prioritize readable code the user can follow over terse cleverness
+- Don't over-explain familiar territory (HTML structure, basic CSS rules)
+
 ## Technology Stack
 Status: CONFIRMED
 - Language: TypeScript — type safety across Tauri commands and React state
