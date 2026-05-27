@@ -100,6 +100,8 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 5. CSV export for history tab
 6. Add doneSimple logo 
 7. Add doneSimple documentation for the README.md + how to download locally
+8. Build and install doneSimple as a native local app — `npm run tauri build` produces a signed .dmg/installer so the app launches from Spotlight/dock without `npm run tauri dev`
+9. Pressing Enter on a task description in the to-do tab moves focus to a new blank task row (spreadsheet/Notion-style keyboard flow)
 
 ## Session History
 ### Session 1 — 2026-05-25

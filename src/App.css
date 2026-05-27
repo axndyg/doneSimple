@@ -53,6 +53,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 /* Scrollable table body wrapper */
@@ -180,12 +181,14 @@
 
 /* Work tab — vertical stack */
 .work-panel {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 32px;
   max-width: 480px;
   margin: 0 auto;
   min-height: 0;
+  width: 100%;
 }
 
 .work-timer {
@@ -310,4 +313,224 @@
 .empty-task {
   color: #ccc;
   font-style: italic;
+}
+
+/* Timer completion overlay */
+.work-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(250, 250, 250, 0.97);
+  z-index: 10;
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.overlay-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.overlay-icon-btn {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 9px;
+  color: #888;
+  line-height: 1.4;
+  font-family: inherit;
+}
+
+.overlay-icon-btn:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.overlay-body {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  min-height: 0;
+}
+
+.overlay-left {
+  width: 180px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.overlay-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  padding: 28px 32px;
+  background: #ffffffa7;
+  text-align: center;
+}
+
+.overlay-label {
+  display: block;
+  font-size: 11px;
+  color: #bbb;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.overlay-right .overlay-label {
+  margin-bottom: 2px;
+}
+
+.overlay-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.overlay-tasks-section {
+  flex: 1;
+  min-height: 0;
+}
+
+.overlay-worked-time {
+  font-size: 40px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  color: #1a1a1a;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.overlay-task-list {
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.overlay-task-list li {
+  font-size: 14px;
+  color: #333;
+  padding: 7px 0;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.overlay-task-list li::before {
+  content: "·";
+  color: #388e3c;
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.overlay-empty {
+  font-size: 14px;
+  color: #ccc;
+  font-style: italic;
+}
+
+.overlay-suggestion {
+  font-size: 20px;
+  font-weight: 400;
+  color: #1a1a1a;
+  line-height: 1.4;
+}
+
+/* Break suggestions editor modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  width: 340px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  flex-shrink: 0;
+}
+
+.modal-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 12px;
+}
+
+.modal-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-input {
+  flex: 1;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 7px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #1a1a1a;
+  outline: none;
+  background: #fafafa;
+}
+
+.modal-input:focus {
+  border-color: #aaa;
+  background: #fff;
+}
+
+.modal-add-btn {
+  background: none;
+  border: 1px dashed #ddd;
+  border-radius: 4px;
+  padding: 9px;
+  font-size: 13px;
+  color: #aaa;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.modal-add-btn:hover {
+  background: #fafafa;
+  color: #555;
+  border-color: #bbb;
 }
