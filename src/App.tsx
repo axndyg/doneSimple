@@ -327,7 +327,7 @@ function App() {
               <h3>recent tasks</h3>
               <div className="work-task-scroll">
                 <ul>
-                  {tasks.filter(t => !workDismissed.includes(t.id) && t.description).slice(0, 5).map(t => (
+                  {tasks.filter(t => !workDismissed.includes(t.id) && t.description && !t.done).slice(0, 5).map(t => (
                     <li key={t.id}>
                       <span>{t.description || <span className="empty-task">unnamed task</span>}</span>
                       <button className="work-done-btn" onClick={() => workDone(t.id)}>✓</button>
