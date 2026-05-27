@@ -24,6 +24,7 @@ function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [focusId, setFocusId] = useState<number | null>(null);
+  const [workDismissed, setWorkDismissed] = useState<number[]>([]);
 
   const [timerSeconds, setTimerSeconds] = useState(30 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -44,7 +45,7 @@ function App() {
 
   function addTask() {
     const id = Date.now();
-    setTasks(prev => [...prev, { id, description: "", recurring: false, done: false }]);
+    setTasks(prev => [...prev, { id, description: "", recurring: false, done: false, num_repeated: 0 }]);
     setFocusId(id);
   }
 
@@ -66,7 +67,7 @@ function App() {
         id: Date.now(),
         description: task.description,
         dateDone: new Date().toISOString().split("T")[0],
-        recurrenceCount: task.num_repeated || 1,
+        recurrenceCount: (task.num_repeated || 0) + 1,
       }]);
       setTasks(prev => prev.filter(t => t.id !== id));
     }
@@ -74,6 +75,23 @@ function App() {
 
   function deleteTask(id: number) {
     setTasks(prev => prev.filter(t => t.id !== id));
+  }
+
+  function workDone(id: number) {
+    const task = tasks.find(t => t.id === id);
+    if (!task || !task.description) return;
+    if (task.recurring) {
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, num_repeated: (t.num_repeated || 0) + 1 } : t));
+      setWorkDismissed(prev => [...prev, id]);
+    } else {
+      setHistory(prev => [...prev, {
+        id: Date.now(),
+        description: task.description,
+        dateDone: new Date().toISOString().split("T")[0],
+        recurrenceCount: (task.num_repeated || 0) + 1,
+      }]);
+      setTasks(prev => prev.filter(t => t.id !== id));
+    }
   }
 
   function openTimerEdit() {
@@ -120,6 +138,7 @@ function App() {
 
       {activeTab === "todo" && (
         <div className="tab-content">
+          <div className="table-scroll">
           <table className="task-table todo-table">
             <thead>
               <tr>
@@ -171,6 +190,7 @@ function App() {
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -202,17 +222,23 @@ function App() {
           </div>
           <div className="work-tasks">
             <h3>recent tasks</h3>
-            <ul>
-              {tasks.filter(t => !t.done).slice(0, 5).map(t => (
-                <li key={t.id}>{t.description || <span className="empty-task">unnamed task</span>}</li>
-              ))}
-            </ul>
+            <div className="work-task-scroll">
+              <ul>
+                {tasks.filter(t => !workDismissed.includes(t.id) && t.description).slice(0, 5).map(t => (
+                  <li key={t.id}>
+                    <span>{t.description || <span className="empty-task">unnamed task</span>}</span>
+                    <button className="work-done-btn" onClick={() => workDone(t.id)}>✓</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       )}
 
       {activeTab === "history" && (
         <div className="tab-content">
+          <div className="table-scroll">
           <table className="task-table history-table">
             <thead>
               <tr>
@@ -232,6 +258,7 @@ function App() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

@@ -50,7 +50,16 @@
 .tab-content {
   flex: 1;
   padding: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollable table body wrapper */
+.table-scroll {
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 
 /* Inline task description input */
@@ -88,9 +97,13 @@
 .task-table th {
   text-align: left;
   padding: 8px 12px;
-  border-bottom: 1px solid #ddd;
   color: #999;
   font-weight: 500;
+  position: sticky;
+  top: 0;
+  background: #f8f8f8;
+  z-index: 1;
+  box-shadow: inset 0 -1px 0 #ddd;
 }
 
 .task-table td {
@@ -172,7 +185,7 @@
   gap: 32px;
   max-width: 480px;
   margin: 0 auto;
-  
+  min-height: 0;
 }
 
 .work-timer {
@@ -180,7 +193,7 @@
   flex-direction: column;
   align-items: center;
   gap: 16px;
-
+  flex-shrink: 0;
 }
 
 .timer-display {
@@ -240,6 +253,16 @@
 .work-tasks {
   border-top: 1px solid #eee;
   padding-top: 24px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.work-task-scroll { 
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .work-tasks h3 {
@@ -256,10 +279,27 @@
 }
 
 .work-tasks li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid #f0f0f0;
   font-size: 14px;
   color: #444;
+}
+
+.work-done-btn {
+  background: none;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+.work-done-btn:hover {
+  color: #388e3c;
 }
 
 .empty-task {
