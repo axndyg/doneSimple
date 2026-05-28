@@ -698,19 +698,115 @@
   color: var(--text-faint);
 }
 
-.tree-node-delete {
+/* ✓ done button — inline inside the node, work-tab style */
+.tree-node-done-btn {
   background: none;
   border: none;
   color: var(--text-faint);
   cursor: pointer;
-  font-size: 11px;
-  padding: 2px;
+  font-size: 15px;
+  padding: 2px 4px;
   flex-shrink: 0;
   line-height: 1;
 }
 
-.tree-node-delete:hover {
+.tree-node-done-btn:hover {
+  color: #388e3c;
+}
+
+.tree-node-done-active {
+  color: #388e3c;
+}
+
+/* Done state — strikethrough text, dimmed node */
+.tree-node-is-done {
+  opacity: 0.55;
+}
+
+.tree-node-is-done .tree-node-input {
+  text-decoration: line-through;
+  color: var(--text-dim);
+}
+
+/* Container that floats below the node's bottom-right on hover */
+.tree-node-below {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+/* Row of small buttons: [≡][✕] */
+.tree-node-btns {
+  display: flex;
+  gap: 3px;
+}
+
+.tree-node-btn {
+  width: 16px;
+  height: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 9px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.tree-node-btn-delete:hover {
   color: #e53935;
+  border-color: #e53935;
+}
+
+.tree-node-btn-pick:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+/* Picker dropdown — flows below the button row inside .tree-node-below */
+.tree-node-picker {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  min-width: 160px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tree-pick-option {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-pick-option:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.tree-pick-empty {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* Hides a tab panel without unmounting it (preserves component state) */
+.tab-hidden {
+  display: none !important;
 }
 
 /* Floating toolbar — stays fixed relative to the tab, not the canvas */

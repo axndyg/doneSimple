@@ -149,6 +149,26 @@ function App() {
     setTasks(prev => prev.filter(t => t.id !== id));
   }
 
+  // Used by tree tab: recurring tasks get full toggle; non-recurring get soft done (no archive).
+  function markTaskDoneFromTree(id: number) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    if (task.recurring) {
+      const today = new Date().toISOString().split("T")[0];
+      if (!task.done) {
+        setTasks(prev => prev.map(t => t.id === id
+          ? { ...t, done: true, num_repeated: t.num_repeated + 1, doneDate: today }
+          : t));
+      } else {
+        setTasks(prev => prev.map(t => t.id === id
+          ? { ...t, done: false, num_repeated: Math.max(0, t.num_repeated - 1), doneDate: undefined }
+          : t));
+      }
+    } else {
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+    }
+  }
+
   function deleteHistory(id: number) { 
     setHistory(prev => prev.filter(t => t.id !==id)); 
   }
@@ -295,7 +315,10 @@ function App() {
                       </button>
                     </td>
                     <td>
-                      <input type="checkbox" checked={task.done} onChange={() => toggleDone(task.id)} />
+                      <button
+                        className={`work-done-btn${task.done ? " tree-node-done-active" : ""}`}
+                        onClick={() => toggleDone(task.id)}
+                      >✓</button>
                     </td>
                     <td className="delete-cell">
                       {hoveredRow === task.id
@@ -316,11 +339,13 @@ function App() {
         </div>
       )}
 
-      {activeTab === "tree" && (
-        <div className="tab-content tab-content-canvas">
-          <TreeTab />
-        </div>
-      )}
+      {/* Always mounted so canvas state survives tab switches */}
+      <div className={`tab-content tab-content-canvas${activeTab !== "tree" ? " tab-hidden" : ""}`}>
+        <TreeTab
+          tasks={tasks.map(t => ({ id: t.id, description: t.description, done: t.done }))}
+          onTaskDone={markTaskDoneFromTree}
+        />
+      </div>
       {activeTab === "work" && (
         <div className="tab-content">
           <div className="work-panel">

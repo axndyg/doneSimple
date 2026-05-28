@@ -8,6 +8,8 @@ interface TreeNode {
   description: string;
   x: number;
   y: number;
+  done: boolean;      // used only when no taskId is linked
+  taskId?: number;    // set when node was created from an existing to-do task
 }
 
 interface TreeLink {
@@ -16,24 +18,33 @@ interface TreeLink {
   toId: number;
 }
 
-// Three-state linking machine:
-//   idle         → not in link mode
-//   source       → clicked "link" button, waiting for first node click
-//   target+id    → first node selected, waiting for second node click
+interface TaskRef {
+  id: number;
+  description: string;
+  done: boolean;
+}
+
 type LinkPhase =
   | { phase: "idle" }
   | { phase: "source" }
   | { phase: "target"; sourceId: number };
 
-export default function TreeTab() {
+interface TreeTabProps {
+  tasks: TaskRef[];
+  onTaskDone: (id: number) => void;
+}
+
+export default function TreeTab({ tasks, onTaskDone }: TreeTabProps) {
   const [nodes, setNodes] = useState<TreeNode[]>([]);
   const [links, setLinks] = useState<TreeLink[]>([]);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [toolMode, setToolMode] = useState<"select" | "pan">("select");
+  const [isPanning, setIsPanning] = useState(false);
   const [linkPhase, setLinkPhase] = useState<LinkPhase>({ phase: "idle" });
   const [hoveredNode, setHoveredNode] = useState<number | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<number | null>(null);
+  const [pickingNodeId, setPickingNodeId] = useState<number | null>(null);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
@@ -43,32 +54,59 @@ export default function TreeTab() {
   const draggingRef = useRef<{
     id: number; mx: number; my: number; nx: number; ny: number;
   } | null>(null);
+  const hoverLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleNodeMouseEnter(id: number) {
+    if (hoverLeaveTimer.current) clearTimeout(hoverLeaveTimer.current);
+    setHoveredNode(id);
+  }
+
+  function handleNodeMouseLeave() {
+    hoverLeaveTimer.current = setTimeout(() => setHoveredNode(null), 150);
+  }
+
+  useEffect(() => () => {
+    if (hoverLeaveTimer.current) clearTimeout(hoverLeaveTimer.current);
+  }, []);
 
   function getWrapperSize() {
     const r = wrapperRef.current?.getBoundingClientRect();
     return { w: r?.width ?? 800, h: r?.height ?? 600 };
   }
 
-  // Place a new node at the center of the current viewport
-  function addNode() {
+  function addNode(description = "") {
     const { w, h } = getWrapperSize();
     const cx = (w / 2 - pan.x) / zoom;
     const cy = (h / 2 - pan.y) / zoom;
     setNodes(prev => [...prev, {
       id: Date.now(),
-      description: "",
+      description,
       x: cx - NODE_W / 2,
       y: cy - NODE_H / 2,
+      done: false,
     }]);
+  }
+
+  function clearCanvas() {
+    setNodes([]);
+    setLinks([]);
+  }
+
+  function toggleNodeDone(id: number) {
+    setNodes(prev => prev.map(n => n.id === id ? { ...n, done: !n.done } : n));
+  }
+
+  function deleteNode(id: number) {
+    setNodes(prev => prev.filter(n => n.id !== id));
+    setLinks(prev => prev.filter(l => l.fromId !== id && l.toId !== id));
   }
 
   function handleWrapperPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     panMovedRef.current = false;
-    if (toolMode === "pan") {
-      panningRef.current = true;
-      panStartRef.current = { px: e.clientX, py: e.clientY, ox: pan.x, oy: pan.y };
-      e.currentTarget.setPointerCapture(e.pointerId);
-    }
+    panningRef.current = true;
+    setIsPanning(true);
+    panStartRef.current = { px: e.clientX, py: e.clientY, ox: pan.x, oy: pan.y };
+    e.currentTarget.setPointerCapture(e.pointerId);
   }
 
   function handleWrapperPointerMove(e: React.PointerEvent<HTMLDivElement>) {
@@ -92,6 +130,7 @@ export default function TreeTab() {
 
   function handleWrapperPointerUp() {
     panningRef.current = false;
+    setIsPanning(false);
     draggingRef.current = null;
   }
 
@@ -121,12 +160,6 @@ export default function TreeTab() {
     }
   }
 
-  function deleteNode(id: number) {
-    setNodes(prev => prev.filter(n => n.id !== id));
-    setLinks(prev => prev.filter(l => l.fromId !== id && l.toId !== id));
-  }
-
-  // Zoom centered on the viewport midpoint using functional setters to avoid stale closures
   function changeZoom(delta: number) {
     const { w, h } = getWrapperSize();
     const cx = w / 2, cy = h / 2;
@@ -140,7 +173,6 @@ export default function TreeTab() {
     });
   }
 
-  // Wheel zoom — must be non-passive to call preventDefault
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
@@ -150,7 +182,7 @@ export default function TreeTab() {
     };
     el.addEventListener("wheel", handler, { passive: false });
     return () => el.removeEventListener("wheel", handler);
-  }, []); // safe: changeZoom uses only functional setters and a ref
+  }, []);
 
   useEffect(() => {
     if (editingNodeId !== null) {
@@ -159,7 +191,6 @@ export default function TreeTab() {
     }
   }, [editingNodeId]);
 
-  // Returns the bezier path and its visual midpoint (t=0.5 for these S-curves = anchor midpoint)
   function getLinkGeometry(link: TreeLink): { path: string; midX: number; midY: number } | null {
     const from = nodes.find(n => n.id === link.fromId);
     const to = nodes.find(n => n.id === link.toId);
@@ -188,6 +219,7 @@ export default function TreeTab() {
 
   const isLinking = linkPhase.phase !== "idle";
   const sourceNodeId = linkPhase.phase === "target" ? linkPhase.sourceId : null;
+  const existingTaskOptions = tasks.filter(t => t.description.trim());
 
   return (
     <div
@@ -196,13 +228,13 @@ export default function TreeTab() {
       onPointerDown={handleWrapperPointerDown}
       onPointerMove={handleWrapperPointerMove}
       onPointerUp={handleWrapperPointerUp}
-      style={{ cursor: toolMode === "pan" ? "grab" : "default" }}
+      style={{ cursor: isPanning ? "grabbing" : toolMode === "pan" ? "grab" : "default" }}
       onClick={() => {
         if (isLinking && !panMovedRef.current) setLinkPhase({ phase: "idle" });
         setEditingNodeId(null);
+        setPickingNodeId(null);
       }}
     >
-      {/* Dot grid — shifts and scales with pan/zoom without being inside the canvas transform */}
       <div
         className="tree-grid"
         style={{
@@ -211,19 +243,16 @@ export default function TreeTab() {
         }}
       />
 
-      {/* Canvas: all nodes and lines live here, transformed together */}
       <div
         className="tree-canvas"
         style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "0 0" }}
       >
-        {/* SVG at canvas origin with overflow:visible — draws all bezier links */}
         <svg style={{ position: "absolute", top: 0, left: 0, width: 0, height: 0, overflow: "visible" }}>
           {links.map(link => {
             const geo = getLinkGeometry(link);
             if (!geo) return null;
             return (
               <g key={link.id} className="tree-link-group">
-                {/* Wide invisible path gives a generous hover target along the curve */}
                 <path d={geo.path} fill="none" stroke="rgba(0,0,0,0)" strokeWidth={14 / zoom} style={{ pointerEvents: "stroke" }} />
                 <path d={geo.path} fill="none" stroke="var(--text-dim)" strokeWidth={1.5 / zoom} style={{ pointerEvents: "none" }} />
                 <g
@@ -240,59 +269,124 @@ export default function TreeTab() {
           })}
         </svg>
 
-        {nodes.map(node => (
-          <div
-            key={node.id}
-            className={[
-              "tree-node",
-              sourceNodeId === node.id ? "tree-node-source" : "",
-              isLinking && sourceNodeId !== node.id ? "tree-node-linkable" : "",
-            ].filter(Boolean).join(" ")}
-            style={{ left: node.x, top: node.y }}
-            onPointerDown={e => handleNodePointerDown(e, node)}
-            onClick={e => handleNodeClick(e, node.id)}
-            onDoubleClick={e => {
-              if (isLinking) return;
-              e.stopPropagation();
-              setEditingNodeId(node.id);
-            }}
-            onMouseEnter={() => setHoveredNode(node.id)}
-            onMouseLeave={() => setHoveredNode(null)}
-          >
-            <input
-              className="tree-node-input"
-              value={node.description}
-              placeholder="task"
-              readOnly={editingNodeId !== node.id}
-              style={{ pointerEvents: editingNodeId === node.id ? "auto" : "none" }}
-              onChange={e => {
-                const val = e.target.value;
-                setNodes(prev => prev.map(n => n.id === node.id ? { ...n, description: val } : n));
+        {nodes.map(node => {
+          const isHovered = hoveredNode === node.id;
+          const showBelow = (isHovered && !isLinking) || pickingNodeId === node.id;
+          const linkedTask = node.taskId != null ? tasks.find(t => t.id === node.taskId) : null;
+          const nodeDone = linkedTask ? linkedTask.done : node.done;
+
+          return (
+            <div
+              key={node.id}
+              className={[
+                "tree-node",
+                nodeDone ? "tree-node-is-done" : "",
+                sourceNodeId === node.id ? "tree-node-source" : "",
+                isLinking && sourceNodeId !== node.id ? "tree-node-linkable" : "",
+              ].filter(Boolean).join(" ")}
+              style={{
+                left: node.x,
+                top: node.y,
+                zIndex: showBelow ? 2 : undefined,
               }}
-              onPointerDown={e => e.stopPropagation()}
-              onBlur={() => setEditingNodeId(null)}
-              onKeyDown={e => {
-                if (e.key === "Escape" || e.key === "Enter") {
-                  e.preventDefault();
-                  setEditingNodeId(null);
-                }
+              onPointerDown={e => handleNodePointerDown(e, node)}
+              onClick={e => handleNodeClick(e, node.id)}
+              onDoubleClick={e => {
+                if (isLinking) return;
+                e.stopPropagation();
+                setEditingNodeId(node.id);
               }}
-              ref={el => { if (el) inputRefs.current.set(node.id, el); else inputRefs.current.delete(node.id); }}
-            />
-            {hoveredNode === node.id && !isLinking && (
-              <button
-                className="tree-node-delete"
+              onMouseEnter={() => handleNodeMouseEnter(node.id)}
+              onMouseLeave={handleNodeMouseLeave}
+            >
+              {/* Task text — fills available width */}
+              <input
+                className="tree-node-input"
+                value={node.description}
+                placeholder="task"
+                readOnly={editingNodeId !== node.id}
+                style={{ pointerEvents: editingNodeId === node.id ? "auto" : "none" }}
+                onChange={e => {
+                  const val = e.target.value;
+                  setNodes(prev => prev.map(n => n.id === node.id ? { ...n, description: val } : n));
+                }}
                 onPointerDown={e => e.stopPropagation()}
-                onClick={e => { e.stopPropagation(); deleteNode(node.id); }}
-              >✕</button>
-            )}
-          </div>
-        ))}
+                onBlur={() => setEditingNodeId(null)}
+                onKeyDown={e => {
+                  if (e.key === "Escape" || e.key === "Enter") {
+                    e.preventDefault();
+                    setEditingNodeId(null);
+                  }
+                }}
+                ref={el => { if (el) inputRefs.current.set(node.id, el); else inputRefs.current.delete(node.id); }}
+              />
+
+              {/* ✓ done — inline right side, work-tab style; always takes space to prevent layout shift */}
+              <button
+                className={`tree-node-done-btn${nodeDone ? " tree-node-done-active" : ""}`}
+                style={{ visibility: (isHovered && !isLinking) || nodeDone ? "visible" : "hidden" }}
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => {
+                  e.stopPropagation();
+                  if (node.taskId != null) onTaskDone(node.taskId);
+                  else toggleNodeDone(node.id);
+                }}
+              >✓</button>
+
+              {/* [≡][✕] buttons + picker dropdown — float below the node on hover */}
+              {showBelow && (
+                <div
+                  className="tree-node-below"
+                  onClick={e => e.stopPropagation()}
+                  onPointerDown={e => e.stopPropagation()}
+                  onMouseEnter={() => handleNodeMouseEnter(node.id)}
+                  onMouseLeave={handleNodeMouseLeave}
+                >
+                  <div className="tree-node-btns">
+                    <button
+                      className="tree-node-btn tree-node-btn-pick"
+                      onClick={e => {
+                        e.stopPropagation();
+                        setPickingNodeId(pickingNodeId === node.id ? null : node.id);
+                      }}
+                    >≡</button>
+                    <button
+                      className="tree-node-btn tree-node-btn-delete"
+                      onClick={e => { e.stopPropagation(); deleteNode(node.id); }}
+                    >✕</button>
+                  </div>
+
+                  {pickingNodeId === node.id && (
+                    <div className="tree-node-picker">
+                      {existingTaskOptions.length === 0
+                        ? <div className="tree-pick-empty">no tasks in to-do</div>
+                        : existingTaskOptions.map(t => (
+                          <div
+                            key={t.id}
+                            className="tree-pick-option"
+                            onClick={() => {
+                              setNodes(prev => prev.map(n =>
+                                n.id === node.id ? { ...n, description: t.description, taskId: t.id } : n
+                              ));
+                              setPickingNodeId(null);
+                            }}
+                          >
+                            {t.description}
+                          </div>
+                        ))
+                      }
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Fixed overlay toolbar — always visible regardless of pan/zoom */}
-      <div className="tree-overlay" onClick={e => e.stopPropagation()}>
-        <button className="tree-ctrl-btn" onClick={addNode}>+ task</button>
+      {/* Toolbar */}
+      <div className="tree-overlay" onClick={e => e.stopPropagation()} onPointerDown={e => e.stopPropagation()}>
+        <button className="tree-ctrl-btn" onClick={() => addNode()}>+ task</button>
         <div className="tree-ctrl-divider" />
         <button
           className={`tree-ctrl-btn${isLinking ? " tree-ctrl-active" : ""}`}
@@ -300,6 +394,7 @@ export default function TreeTab() {
         >
           ⟶ link
         </button>
+        <button className="tree-ctrl-btn" onClick={clearCanvas}>clear</button>
         <div className="tree-ctrl-divider" />
         <button className="tree-ctrl-btn tree-ctrl-icon" onClick={() => changeZoom(-0.15)}>−</button>
         <span className="tree-ctrl-zoom-label">{Math.round(zoom * 100)}%</span>
