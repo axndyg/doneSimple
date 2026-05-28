@@ -61,7 +61,7 @@
 
 /* Smooth mode transition — applies to every element inside .app */
 .app, .app * {
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 /* Logo */
@@ -153,6 +153,30 @@
   min-height: 0;
 }
 
+/* Drag handle + input wrapper inside task cell */
+.task-cell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.drag-handle {
+  color: var(--text-dim);
+  cursor: grab;
+  font-size: 12px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* Drag-to-reorder states */
+.row-dragging {
+  opacity: 0.35;
+}
+
+.row-drag-over td {
+  box-shadow: inset 0 2px 0 var(--text-muted);
+}
+
 /* Inline task description input */
 .task-desc-input {
   width: 100%;
@@ -160,7 +184,7 @@
   background: transparent;
   font-size: 14px;
   font-family: inherit;
-  color: inherit;
+  color: var(--text-primary);
   outline: none;
   padding: 0;
 }
@@ -200,6 +224,7 @@
 .task-table td {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
 }
 
 .task-table tbody tr:hover td {

@@ -62,6 +62,8 @@ function App() {
   const [focusId, setFocusId] = useState<number | null>(null);
   const [workDismissed, setWorkDismissed] = useState<number[]>([]);
   const [dbReady, setDbReady] = useState(false);
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
 
   const [timerSeconds, setTimerSeconds] = useState(30 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -102,6 +104,19 @@ function App() {
       })
       .catch(console.error);
   }, []);
+
+  // Global mouseup clears drag if released outside the table
+  useEffect(() => {
+    const clear = () => { setDraggedId(null); setDragOverId(null); };
+    window.addEventListener("mouseup", clear);
+    return () => window.removeEventListener("mouseup", clear);
+  }, []);
+
+  // Show grabbing cursor app-wide while dragging
+  useEffect(() => {
+    document.body.style.cursor = draggedId !== null ? "grabbing" : "";
+    document.body.style.userSelect = draggedId !== null ? "none" : "";
+  }, [draggedId]);
 
   const taskSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historySyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -220,6 +235,18 @@ function App() {
       }]);
       setTasks(prev => prev.filter(t => t.id !== id));
     }
+  }
+
+  function reorderTask(fromId: number, toId: number) {
+    setTasks(prev => {
+      const from = prev.findIndex(t => t.id === fromId);
+      const to = prev.findIndex(t => t.id === toId);
+      if (from === -1 || to === -1 || from === to) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
   }
 
   function deleteTask(id: number) {
@@ -349,8 +376,8 @@ function App() {
       <nav className="tab-bar">
         <div className="app-logo">dS</div>
         <button className={`tab-btn${activeTab === "todo" ? " active" : ""}`} onClick={() => setActiveTab("todo")}>to do</button>
-        <button className={`tab-btn${activeTab === "tree" ? " active" : ""}`} onClick={() => setActiveTab("tree")}>tree</button>
         <button className={`tab-btn${activeTab === "work" ? " active" : ""}`} onClick={() => setActiveTab("work")}>work</button>
+        <button className={`tab-btn${activeTab === "tree" ? " active" : ""}`} onClick={() => setActiveTab("tree")}>tree</button>
         <button className={`tab-btn${activeTab === "history" ? " active" : ""}`} onClick={() => setActiveTab("history")}>history</button>
         <button className="night-toggle" onClick={() => setDarkMode(d => { localStorage.setItem("darkMode", String(!d)); return !d; })}>{darkMode ? "L" : "N"}</button>
       </nav>
@@ -371,20 +398,32 @@ function App() {
                 {tasks.map(task => (
                   <tr
                     key={task.id}
-                    className={task.done ? "row-done" : ""}
-                    onMouseEnter={() => setHoveredRow(task.id)}
+                    className={[
+                      task.done ? "row-done" : "",
+                      draggedId === task.id ? "row-dragging" : "",
+                      dragOverId === task.id && draggedId !== task.id ? "row-drag-over" : "",
+                    ].filter(Boolean).join(" ")}
+                    onMouseEnter={() => { setHoveredRow(task.id); if (draggedId !== null) setDragOverId(task.id); }}
                     onMouseLeave={() => setHoveredRow(null)}
+                    onMouseUp={() => { if (draggedId !== null && draggedId !== task.id) reorderTask(draggedId, task.id); setDraggedId(null); setDragOverId(null); }}
                   >
                     <td>
-                      <input
-                        className="task-desc-input"
-                        value={task.description}
-                        placeholder="task description"
-                        onChange={e => updateDescription(task.id, e.target.value)}
-                        onKeyDown={e => handleDescriptionKeyDown(e, task.id)}
-                        ref={el => { if (el && task.id === focusId) { el.focus(); setFocusId(null); } }}
-                        readOnly={task.done}
-                      />
+                      <div className="task-cell">
+                        <span
+                          className="drag-handle"
+                          style={{ visibility: hoveredRow === task.id ? "visible" : "hidden" }}
+                          onMouseDown={e => { e.preventDefault(); setDraggedId(task.id); setDragOverId(task.id); }}
+                        >⠿</span>
+                        <input
+                          className="task-desc-input"
+                          value={task.description}
+                          placeholder="task description"
+                          onChange={e => updateDescription(task.id, e.target.value)}
+                          onKeyDown={e => handleDescriptionKeyDown(e, task.id)}
+                          ref={el => { if (el && task.id === focusId) { el.focus(); setFocusId(null); } }}
+                          readOnly={task.done}
+                        />
+                      </div>
                     </td>
                     <td>
                       <button
