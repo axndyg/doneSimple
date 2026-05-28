@@ -113,24 +113,24 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 - [x] To-do "done" column: replaced native checkbox with ✓ button matching work/tree style
 - [x] SQLite persistence via tauri-plugin-sql — tasks, history, workDismissed, tree nodes/links all survive restarts
 - [x] Debounced sync (300ms) + INSERT OR REPLACE to prevent concurrent write race conditions
-- [x] Dark mode preference persists via localStorage
+- [x] Dark mode preference persists via localStorage1
 - [x] dS logo in tab bar + full icon set generated for dock, Finder, Windows, iOS, Android
 - [x] .gitignore added — local SQLite DB and build artifacts never tracked in repo
 - [x] Dark mode color transition lag fixed: explicit color: var(--text-primary) on td + unified 0.2s timing
 - [x] Drag-to-reorder tasks in to-do tab (mouse-event based, avoids WebKit HTML5 DnD bug); syncs to work tab automatically
 - [x] GitHub Release v0.1.0 published with .dmg for Apple Silicon; README with download instructions
+- [x] Recurring pill opens day-picker popover (M T W T F S S circular chips); position: fixed to escape scroll clipping, clamped to viewport with 16px margin, resize-reactive; days stored in SQLite as JSON
+- [x] System notification fires when timer hits 0 via tauri-plugin-notification (permission requested on mount; requires bundled .app — not triggered in dev mode)
+- [x] dS logo moved to top-right of tab bar and now doubles as dark/light mode toggle; separate N/L button removed
+- [x] Delete ✕ buttons always visible at low opacity across to-do and history tabs, full opacity + red on hover
 
 ### Problems to Polish
 - [ ] No visual feedback when done is denied on an unnamed task
 
 ### Future Steps
-1. Add notification when timer hits 0 if tabbed off, either forcing back to doneSimple app or a notification on the user's system 
-2. Make "recurring" have options for how often it re-occurs by day (i.e every MON, FRI) or date (repeat day pattern till DATE) with a pop-opp  that shows up when you click reccuring
-3. Make the 'x's more visible per tab
-4. Move "dS" logo to the top right and have this be the switch to dark or light mode
-5. CSV export for history tab
-6. Build and distribute signed .app — requires Apple Developer account ($99/yr) to avoid Gatekeeper warnings for other users
-7. Add "link" tab between "work" and "history" — an infinite canvas grid where tasks can be dropped and visually connected with lines (flowchart-style), showing dependencies or sequences between tasks; design TBD
+1. CSV export for history tab
+2. Build and distribute signed .app — requires Apple Developer account ($99/yr) to avoid Gatekeeper warnings for other users
+3. Add "link" tab between "work" and "history" — an infinite canvas grid where tasks can be dropped and visually connected with lines (flowchart-style), showing dependencies or sequences between tasks; design TBD
 
 ## Session History
 ### Session 1 — 2026-05-25
@@ -154,3 +154,6 @@ Tree tab node controls redesigned: inline ✓ done button (work-tab style, visib
 
 ### Session 7 — 2026-05-28
 Full SQLite persistence wired via tauri-plugin-sql: tasks (including workDismissed flag), history, and tree nodes/links all survive restarts. Concurrent write race condition (UNIQUE constraint) fixed with INSERT OR REPLACE + 300ms debounce on sync effects. Dark mode preference persisted in localStorage. dS logo added to tab bar; full icon set generated for all platforms via `npx tauri icon`. .gitignore created. Dark mode transition lag fixed by adding explicit CSS variable color to td elements. Drag-to-reorder implemented with mouse events (HTML5 DnD dropped — unreliable in WebKit/Tauri). GitHub Release v0.1.0 published with Apple Silicon .dmg; README rewritten with download and build-from-source instructions.
+
+### Session 8 — 2026-05-28
+Implemented future steps 1–4. Recurring pill now opens a fixed-position day-picker popover with M T W T F S S circular chips; pill always shows "yes/no", selected days stored in SQLite as JSON; picker uses position: fixed + getBoundingClientRect to escape scroll-container clipping, clamped 16px from viewport edge, resize-reactive via window resize listener. System notification wired via tauri-plugin-notification (fires on timer end; requires bundled .app — permission request is a no-op in dev mode). dS logo moved to tab-bar far right and made the dark/light toggle, removing the old N/L button. Delete ✕ buttons now always rendered at low opacity instead of hidden. Released as v0.2.0.
