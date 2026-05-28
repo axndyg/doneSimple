@@ -29,6 +29,7 @@ const DEFAULT_BREAK_SUGGESTIONS = [
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>("todo");
+  const [darkMode, setDarkMode] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
@@ -104,7 +105,18 @@ function App() {
   }
 
   function toggleRecurring(id: number) {
+    const task = tasks.find(t => t.id == id); 
+    if (!task) return;
     setTasks(prev => prev.map(t => t.id === id ? { ...t, recurring: !t.recurring } : t));
+    if (task.done) { 
+        setHistory(prev => [...prev, {
+        id: Date.now(),
+        description: task.description,
+        dateDone: new Date().toISOString().split("T")[0],
+        recurrenceCount: (task.num_repeated || 1),
+      }]);
+      setTasks(prev => prev.filter(t => t.id !== id));
+    }
   }
 
   function toggleDone(id: number) {
@@ -136,6 +148,10 @@ function App() {
     setTasks(prev => prev.filter(t => t.id !== id));
   }
 
+  function deleteHistory(id: number) { 
+    setHistory(prev => prev.filter(t => t.id !==id)); 
+  }
+
   function workDone(id: number) {
     const task = tasks.find(t => t.id === id);
     if (!task || !task.description) return;
@@ -143,7 +159,7 @@ function App() {
       setTasksCompletedThisSession(prev => [...prev, task.description]);
     }
     if (task.recurring) {
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, num_repeated: (t.num_repeated || 0) + 1 } : t));
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, done: true, num_repeated: (t.num_repeated || 0) + 1, } : t));
       setWorkDismissed(prev => [...prev, id]);
     } else {
       setHistory(prev => [...prev, {
@@ -229,14 +245,15 @@ function App() {
   const workedSS = String(workedSeconds % 60).padStart(2, "0");
 
   return (
-    <div className="app">
+    <div className={`app${darkMode ? " dark" : ""}`}>
       <nav className="tab-bar">
         <button className={`tab-btn${activeTab === "todo" ? " active" : ""}`} onClick={() => setActiveTab("todo")}>to do</button>
         <button className={`tab-btn${activeTab === "work" ? " active" : ""}`} onClick={() => setActiveTab("work")}>work</button>
         <button className={`tab-btn${activeTab === "history" ? " active" : ""}`} onClick={() => setActiveTab("history")}>history</button>
+        <button className="night-toggle" onClick={() => setDarkMode(d => !d)}>{darkMode ? "day" : "night"}</button>
       </nav>
 
-      {activeTab === "todo" && (
+     {activeTab === "todo" && (
         <div className="tab-content">
           <div className="table-scroll">
             <table className="task-table todo-table">
@@ -264,6 +281,7 @@ function App() {
                         onChange={e => updateDescription(task.id, e.target.value)}
                         onKeyDown={e => handleDescriptionKeyDown(e, task.id)}
                         ref={el => { if (el && task.id === focusId) { el.focus(); setFocusId(null); } }}
+                        readOnly={task.done}
                       />
                     </td>
                     <td>
@@ -387,10 +405,15 @@ function App() {
               </thead>
               <tbody>
                 {history.map(entry => (
-                  <tr key={entry.id}>
+                  <tr key={entry.id} onMouseEnter={() => setHoveredRow(entry.id)} onMouseLeave={() => setHoveredRow(null)}>
                     <td>{entry.description}</td>
                     <td>{entry.dateDone}</td>
                     <td>{entry.recurrenceCount}</td>
+                    <td className="delete-cell">
+                      {hoveredRow === entry.id
+                        ? <button className="delete-btn" onClick={() => deleteHistory(entry.id)}>✕</button>
+                        : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>

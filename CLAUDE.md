@@ -27,7 +27,7 @@ Basis: generator-recommended. User retains authority to override any assignment.
 ## Learner Context
 User background: HTML/CSS fluent; JavaScript, TypeScript, React, and Tauri are
 new territory. Full learning observations, concept log, and session growth:
-see [TAKEAWAYS.md](TAKEAWAYS.md) — update it when new concepts are introduced
+see [GROWTH.md](GROWTH.md) — update it when new concepts are introduced
 or understanding is demonstrated through dialogue.
 
 When writing or explaining code in this project:
@@ -101,6 +101,11 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 - [x] Sticky table headers, scrollable rows, fixed column widths (no layout shift)
 - [x] Window minimum size: 650×450px enforced via tauri.conf.json
 - [x] SQLite stub (src/db.ts): full schema + all queries commented-in, ready to wire
+- [x] Work tab: timer completion overlay with pre-built break suggestions (walk outside, stretch, drink water) + custom entry, dismiss returns to base work tab
+- [x] To-do tab: pressing Enter on a task description adds a new blank task row (spreadsheet-style keyboard flow)
+- [x] Work tab: unmarking a recurring done task in the to-do tab now restores it in the work tab (cleared workDismissed on toggle)
+- [x] History tab: individual row deletion via hover-reveal ✕ button
+- [x] Dark mode (night/day toggle) on tab bar far right, implemented via CSS custom properties
 
 ### Problems to Polish
 - [ ] workDismissed (recurring tasks hidden from work tab) resets on restart — resolved by SQLite integration
@@ -109,14 +114,11 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 
 ### Future Steps
 1. Integrate SQLite (src/db.ts) for cross-session state persistence
-2. Add individual row removal from history tab
-3. **(Priority)** Recommendations/reminders overlay on timer completion — pre-built + user-defined options, dismiss/clear returns to base work tab
-4. Dark mode toggle on tab bar, far right opposite the three tabs
-5. CSV export for history tab
-6. Add doneSimple logo 
-7. Add doneSimple documentation for the README.md + how to download locally
-8. Build and install doneSimple as a native local app — `npm run tauri build` produces a signed .dmg/installer so the app launches from Spotlight/dock without `npm run tauri dev`
-9. Pressing Enter on a task description in the to-do tab moves focus to a new blank task row (spreadsheet/Notion-style keyboard flow)
+2. CSV export for history tab
+3. Add doneSimple logo
+4. Add doneSimple documentation for the README.md + how to download locally
+5. Build and install doneSimple as a native local app — `npm run tauri build` produces a signed .dmg/installer so the app launches from Spotlight/dock without `npm run tauri dev`
+6. Add "link" tab between "work" and "history" — an infinite canvas grid where tasks can be dropped and visually connected with lines (flowchart-style), showing dependencies or sequences between tasks; design TBD
 
 ## Session History
 ### Session 1 — 2026-05-25
@@ -128,3 +130,9 @@ UI layout finalized from user wireframes.
 Built full UI from scratch. All three tabs functional with in-memory state.
 Recurring done behavior (strikethrough, count toggle, end-of-day reset framework),
 timer alarm, SQLite stub with schema. Five future steps logged and prioritized.
+
+### Session 3 — 2026-05-27
+Timer completion overlay implemented: pre-built suggestions (walk outside, stretch, drink water) plus custom user-defined entry; dismiss/clear returns to base work tab. Enter-to-add-task fixed: pressing Enter on a task row in the to-do tab creates a new blank row below it (spreadsheet-style flow).
+
+### Session 4 — 2026-05-27
+Three bug fixes and one feature: (1) recurring task unmarked in to-do tab now reappears in work tab — toggleDone clears workDismissed; (2) history tab hover-reveal ✕ delete wired up with missing onMouseEnter/onMouseLeave handlers; (3) dark mode implemented via CSS custom properties — single .dark class on .app flips all tokens; (4) link tab concept logged as future step.
