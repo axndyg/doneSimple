@@ -124,9 +124,13 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 - [ ] No visual feedback when done is denied on an unnamed task
 
 ### Future Steps
-1. CSV export for history tab
-2. Build and distribute signed .app — requires Apple Developer account ($99/yr) to avoid Gatekeeper warnings for other users
-3. Add "link" tab between "work" and "history" — an infinite canvas grid where tasks can be dropped and visually connected with lines (flowchart-style), showing dependencies or sequences between tasks; design TBD
+1. Add notification when timer hits 0 if tabbed off, either forcing back to doneSimple app or a notification on the user's system 
+2. Make "recurring" have options for how often it re-occurs by day (i.e every MON, FRI) or date (repeat day pattern till DATE) with a pop-opp  that shows up when you click reccuring
+3. Make the 'x's more visible per tab
+4. Move "dS" logo to the top right and have this be the switch to dark or light mode
+5. CSV export for history tab
+6. Build and distribute signed .app — requires Apple Developer account ($99/yr) to avoid Gatekeeper warnings for other users
+7. Add "link" tab between "work" and "history" — an infinite canvas grid where tasks can be dropped and visually connected with lines (flowchart-style), showing dependencies or sequences between tasks; design TBD
 
 ## Session History
 ### Session 1 — 2026-05-25

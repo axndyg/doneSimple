@@ -16,8 +16,7 @@ Grab the `.dmg` file from the latest release, open it, and drag **doneSimple** i
 
 Because the app is not yet signed with an Apple Developer certificate, macOS may block it on first open. To get past this:
 
-1. Right-click the app → **Open** → click **Open** in the dialog
-2. Or run once in Terminal: `xattr -cr /Applications/doneSimple.app`
+1. run once in Terminal: `xattr -cr /Applications/doneSimple.app`
 
 After that first step it opens normally every time.
 
