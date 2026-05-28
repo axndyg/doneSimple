@@ -410,9 +410,11 @@ function App() {
                     <td>{entry.dateDone}</td>
                     <td>{entry.recurrenceCount}</td>
                     <td className="delete-cell">
-                      {hoveredRow === entry.id
-                        ? <button className="delete-btn" onClick={() => deleteHistory(entry.id)}>✕</button>
-                        : null}
+                      <button
+                        className="delete-btn"
+                        onClick={() => deleteHistory(entry.id)}
+                        style={{ visibility: hoveredRow === entry.id ? "visible" : "hidden" }}
+                      >✕</button>
                     </td>
                   </tr>
                 ))}
