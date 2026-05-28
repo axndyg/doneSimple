@@ -64,3 +64,7 @@ npm run tauri build    # production .app + .dmg
 ```
 
 The release bundle lands in `src-tauri/target/release/bundle/`.
+
+## License 
+
+[MIT](https://choosealicense.com/licenses/mit/)
