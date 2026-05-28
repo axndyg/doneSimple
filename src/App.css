@@ -771,11 +771,18 @@
   gap: 6px;
   cursor: grab;
   user-select: none;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+  border-color: #c0c0c0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .tree-node:active {
   cursor: grabbing;
+}
+
+.dark .tree-node {
+  background: #303030;
+  border-color: #505050;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
 }
 
 /* Source node highlight (first click in link mode) */

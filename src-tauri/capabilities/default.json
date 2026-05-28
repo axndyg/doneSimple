@@ -7,6 +7,7 @@
     "core:default",
     "opener:default",
     "notification:default",
+    "notification:allow-notify",
     "sql:allow-execute",
     "sql:allow-select",
     "sql:allow-load"
