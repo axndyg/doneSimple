@@ -15,6 +15,7 @@ export interface TaskRow {
   num_repeated: number;
   done_date: string | null;
   work_dismissed: number;  // 0 | 1
+  recur_days: string | null; // JSON array of day indices 0=Mon..6=Sun, null = every day
 }
 
 export interface HistoryRow {
@@ -49,9 +50,12 @@ export async function initDb(): Promise<void> {
       done INTEGER NOT NULL DEFAULT 0,
       num_repeated INTEGER NOT NULL DEFAULT 0,
       done_date TEXT,
-      work_dismissed INTEGER NOT NULL DEFAULT 0
+      work_dismissed INTEGER NOT NULL DEFAULT 0,
+      recur_days TEXT
     )
   `);
+  // Add recur_days to existing databases that predate this column
+  await db.execute("ALTER TABLE tasks ADD COLUMN recur_days TEXT").catch(() => {});
   await db.execute(`
     CREATE TABLE IF NOT EXISTS history (
       id INTEGER PRIMARY KEY,
@@ -89,8 +93,8 @@ export async function syncTasks(rows: TaskRow[]): Promise<void> {
   await db.execute("DELETE FROM tasks");
   for (const t of rows) {
     await db.execute(
-      "INSERT OR REPLACE INTO tasks (id, description, recurring, done, num_repeated, done_date, work_dismissed) VALUES (?,?,?,?,?,?,?)",
-      [t.id, t.description, t.recurring, t.done, t.num_repeated, t.done_date, t.work_dismissed]
+      "INSERT OR REPLACE INTO tasks (id, description, recurring, done, num_repeated, done_date, work_dismissed, recur_days) VALUES (?,?,?,?,?,?,?,?)",
+      [t.id, t.description, t.recurring, t.done, t.num_repeated, t.done_date, t.work_dismissed, t.recur_days]
     );
   }
 }

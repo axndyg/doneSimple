@@ -5,6 +5,13 @@ import {
   initDb, loadTasks, loadHistory, syncTasks, syncHistory,
   TaskRow, HistoryRow,
 } from "./db";
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from "@tauri-apps/plugin-notification";
+
+const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
 
 type Tab = "todo" | "tree" | "work" | "history";
 
@@ -12,6 +19,7 @@ interface Task {
   id: number;
   description: string;
   recurring: boolean;
+  recurDays: number[]; // 0=Mon..6=Sun, empty = every day
   num_repeated: number;
   done: boolean;
   doneDate?: string;
@@ -41,6 +49,7 @@ function toTaskRows(tasks: Task[], dismissed: number[]): TaskRow[] {
     num_repeated: t.num_repeated,
     done_date: t.doneDate ?? null,
     work_dismissed: dismissed.includes(t.id) ? 1 : 0,
+    recur_days: t.recurDays.length > 0 ? JSON.stringify(t.recurDays) : null,
   }));
 }
 
@@ -51,6 +60,13 @@ function toHistoryRows(history: HistoryEntry[]): HistoryRow[] {
     date_done: h.dateDone,
     recurrence_count: h.recurrenceCount,
   }));
+}
+
+const PICKER_EDGE_MARGIN = 16;
+
+function calcPickerPos(el: HTMLElement): { top: number; left: number } {
+  const rect = el.getBoundingClientRect();
+  return { top: rect.bottom + 6, left: rect.left };
 }
 
 function App() {
@@ -64,12 +80,16 @@ function App() {
   const [dbReady, setDbReady] = useState(false);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const [recurPickerFor, setRecurPickerFor] = useState<number | null>(null);
+  const [recurPickerPos, setRecurPickerPos] = useState<{ top: number; left: number } | null>(null);
 
   const [timerSeconds, setTimerSeconds] = useState(30 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerEditing, setTimerEditing] = useState(false);
   const [digitBuffer, setDigitBuffer] = useState<number[]>([0, 0, 0, 0]);
   const timerInputRef = useRef<HTMLInputElement>(null);
+  const recurPillRef = useRef<HTMLElement | null>(null);
+  const recurPickerRef = useRef<HTMLDivElement | null>(null);
 
   const [timerHasStarted, setTimerHasStarted] = useState(false);
   const [workedSeconds, setWorkedSeconds] = useState(0);
@@ -78,6 +98,47 @@ function App() {
   const [currentBreakSuggestion, setCurrentBreakSuggestion] = useState("");
   const [breakSuggestions, setBreakSuggestions] = useState<string[]>(DEFAULT_BREAK_SUGGESTIONS);
   const [showBreakEditor, setShowBreakEditor] = useState(false);
+
+  // Request notification permission on first mount so the dialog isn't surprising
+  useEffect(() => {
+    isPermissionGranted().then(granted => {
+      if (!granted) requestPermission().catch(() => {});
+    }).catch(() => {});
+  }, []);
+
+  // Close recur picker when clicking outside of it
+  useEffect(() => {
+    if (recurPickerFor === null) return;
+    const close = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest(".recur-picker, .pill")) {
+        setRecurPickerFor(null);
+        setRecurPickerPos(null);
+        recurPillRef.current = null;
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [recurPickerFor]);
+
+  // Reposition picker when window resizes so it stays anchored to its pill
+  useEffect(() => {
+    if (recurPickerFor === null) return;
+    const onResize = () => {
+      if (recurPillRef.current) setRecurPickerPos(calcPickerPos(recurPillRef.current));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [recurPickerFor]);
+
+  // After each position update, measure the rendered picker and clamp it away from the right edge
+  useEffect(() => {
+    if (!recurPickerRef.current || !recurPickerPos) return;
+    const rect = recurPickerRef.current.getBoundingClientRect();
+    const overflow = rect.right + PICKER_EDGE_MARGIN - window.innerWidth;
+    if (overflow > 0) {
+      setRecurPickerPos(prev => prev ? { ...prev, left: prev.left - overflow } : prev);
+    }
+  }, [recurPickerPos]);
 
   // Load all data from SQLite on first mount
   useEffect(() => {
@@ -89,6 +150,7 @@ function App() {
           id: r.id,
           description: r.description,
           recurring: r.recurring === 1,
+          recurDays: r.recur_days ? JSON.parse(r.recur_days) : [],
           done: r.done === 1,
           num_repeated: r.num_repeated,
           doneDate: r.done_date ?? undefined,
@@ -149,6 +211,10 @@ function App() {
       const idx = Math.floor(Math.random() * breakSuggestions.length);
       setCurrentBreakSuggestion(breakSuggestions[idx] ?? "Take a break");
       setShowOverlay(true);
+      // Fire system notification so user knows even if they're in another app
+      isPermissionGranted().then(granted => {
+        if (granted) sendNotification({ title: "doneSimple", body: "Timer's up — take a break!" });
+      }).catch(() => {});
       return;
     }
     const id = setInterval(() => {
@@ -180,7 +246,7 @@ function App() {
 
   function addTask() {
     const id = Date.now();
-    setTasks(prev => [...prev, { id, description: "", recurring: false, done: false, num_repeated: 0 }]);
+    setTasks(prev => [...prev, { id, description: "", recurring: false, recurDays: [], done: false, num_repeated: 0 }]);
     setFocusId(id);
   }
 
@@ -195,19 +261,57 @@ function App() {
     }
   }
 
-  function toggleRecurring(id: number) {
-    const task = tasks.find(t => t.id == id);
+  function handlePillClick(id: number, e: React.MouseEvent) {
+    const task = tasks.find(t => t.id === id);
     if (!task) return;
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, recurring: !t.recurring } : t));
+    if (recurPickerFor === id) {
+      setRecurPickerFor(null);
+      setRecurPickerPos(null);
+      recurPillRef.current = null;
+      return;
+    }
+    if (!task.recurring) {
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, recurring: true } : t));
+    }
+    const el = e.currentTarget as HTMLElement;
+    recurPillRef.current = el;
+    setRecurPickerPos(calcPickerPos(el));
+    setRecurPickerFor(id);
+  }
+
+  function toggleRecurDay(taskId: number, dayIndex: number) {
+    setTasks(prev => prev.map(t => {
+      if (t.id !== taskId) return t;
+      const has = t.recurDays.includes(dayIndex);
+      const newDays = has
+        ? t.recurDays.filter(d => d !== dayIndex)
+        : [...t.recurDays, dayIndex].sort((a, b) => a - b);
+      return { ...t, recurDays: newDays };
+    }));
+  }
+
+  function disableRecurring(id: number) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    setRecurPickerFor(null);
+    setRecurPickerPos(null);
+    recurPillRef.current = null;
     if (task.done) {
-        setHistory(prev => [...prev, {
+      // Recurring done task turned non-recurring → archive it
+      setHistory(prev => [...prev, {
         id: Date.now(),
         description: task.description,
         dateDone: new Date().toISOString().split("T")[0],
         recurrenceCount: (task.num_repeated || 1),
       }]);
       setTasks(prev => prev.filter(t => t.id !== id));
+    } else {
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, recurring: false, recurDays: [] } : t));
     }
+  }
+
+  function recurPillLabel(task: Task): string {
+    return task.recurring ? "yes" : "no";
   }
 
   function toggleDone(id: number) {
@@ -374,12 +478,15 @@ function App() {
   return (
     <div className={`app${darkMode ? " dark" : ""}`}>
       <nav className="tab-bar">
-        <div className="app-logo">dS</div>
         <button className={`tab-btn${activeTab === "todo" ? " active" : ""}`} onClick={() => setActiveTab("todo")}>to do</button>
         <button className={`tab-btn${activeTab === "work" ? " active" : ""}`} onClick={() => setActiveTab("work")}>work</button>
         <button className={`tab-btn${activeTab === "tree" ? " active" : ""}`} onClick={() => setActiveTab("tree")}>tree</button>
         <button className={`tab-btn${activeTab === "history" ? " active" : ""}`} onClick={() => setActiveTab("history")}>history</button>
-        <button className="night-toggle" onClick={() => setDarkMode(d => { localStorage.setItem("darkMode", String(!d)); return !d; })}>{darkMode ? "L" : "N"}</button>
+        <button
+          className="app-logo"
+          onClick={() => setDarkMode(d => { localStorage.setItem("darkMode", String(!d)); return !d; })}
+          title={darkMode ? "switch to light mode" : "switch to dark mode"}
+        >dS</button>
       </nav>
 
      {activeTab === "todo" && (
@@ -428,9 +535,9 @@ function App() {
                     <td>
                       <button
                         className={`pill${task.recurring ? " pill-yes" : " pill-no"}`}
-                        onClick={() => toggleRecurring(task.id)}
+                        onClick={e => handlePillClick(task.id, e)}
                       >
-                        {task.recurring ? "yes" : "no"}
+                        {recurPillLabel(task)}
                       </button>
                     </td>
                     <td>
@@ -440,9 +547,11 @@ function App() {
                       >✓</button>
                     </td>
                     <td className="delete-cell">
-                      {hoveredRow === task.id
-                        ? <button className="delete-btn" onClick={() => deleteTask(task.id)}>✕</button>
-                        : null}
+                      <button
+                        className="delete-btn"
+                        onClick={() => deleteTask(task.id)}
+                        style={{ opacity: hoveredRow === task.id ? 1 : 0.3 }}
+                      >✕</button>
                     </td>
                   </tr>
                 ))}
@@ -565,7 +674,7 @@ function App() {
                       <button
                         className="delete-btn"
                         onClick={() => deleteHistory(entry.id)}
-                        style={{ visibility: hoveredRow === entry.id ? "visible" : "hidden" }}
+                        style={{ opacity: hoveredRow === entry.id ? 1 : 0.3 }}
                       >✕</button>
                     </td>
                   </tr>
@@ -575,6 +684,33 @@ function App() {
           </div>
         </div>
       )}
+
+      {recurPickerFor !== null && recurPickerPos && (() => {
+        const task = tasks.find(t => t.id === recurPickerFor);
+        if (!task) return null;
+        return (
+          <div
+            ref={recurPickerRef}
+            className="recur-picker"
+            style={{ position: "fixed", top: recurPickerPos.top, left: recurPickerPos.left }}
+          >
+            <span className="recur-picker-label">repeats on</span>
+            <div className="recur-day-chips">
+              {DAY_LETTERS.map((letter, i) => (
+                <button
+                  key={i}
+                  className={`recur-day-chip${task.recurDays.includes(i) ? " chip-active" : ""}`}
+                  onClick={e => { e.stopPropagation(); toggleRecurDay(task.id, i); }}
+                >{letter}</button>
+              ))}
+            </div>
+            <button
+              className="recur-off-btn"
+              onClick={e => { e.stopPropagation(); disableRecurring(task.id); }}
+            >turn off</button>
+          </div>
+        );
+      })()}
 
       {showBreakEditor && (
         <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) setShowBreakEditor(false); }}>
