@@ -1,4 +1,8 @@
 import { useState, useRef, useEffect } from "react";
+import {
+  loadTreeNodes, loadTreeLinks, syncTreeNodes, syncTreeLinks,
+  TreeNodeRow, TreeLinkRow,
+} from "./db";
 
 const NODE_W = 140;
 const NODE_H = 52;
@@ -8,8 +12,8 @@ interface TreeNode {
   description: string;
   x: number;
   y: number;
-  done: boolean;      // used only when no taskId is linked
-  taskId?: number;    // set when node was created from an existing to-do task
+  done: boolean;
+  taskId?: number;
 }
 
 interface TreeLink {
@@ -32,9 +36,18 @@ type LinkPhase =
 interface TreeTabProps {
   tasks: TaskRef[];
   onTaskDone: (id: number) => void;
+  dbReady: boolean;
 }
 
-export default function TreeTab({ tasks, onTaskDone }: TreeTabProps) {
+function nodeToRow(n: TreeNode): TreeNodeRow {
+  return { id: n.id, description: n.description, x: n.x, y: n.y, done: n.done ? 1 : 0, task_id: n.taskId ?? null };
+}
+
+function linkToRow(l: TreeLink): TreeLinkRow {
+  return { id: l.id, from_id: l.fromId, to_id: l.toId };
+}
+
+export default function TreeTab({ tasks, onTaskDone, dbReady }: TreeTabProps) {
   const [nodes, setNodes] = useState<TreeNode[]>([]);
   const [links, setLinks] = useState<TreeLink[]>([]);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -55,6 +68,52 @@ export default function TreeTab({ tasks, onTaskDone }: TreeTabProps) {
     id: number; mx: number; my: number; nx: number; ny: number;
   } | null>(null);
   const hoverLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mirror of nodes state for use in event handlers without stale closures
+  const nodesRef = useRef<TreeNode[]>([]);
+  const nodeSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const linkSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function scheduleSyncNodes(nodes: TreeNode[]) {
+    if (nodeSyncTimer.current) clearTimeout(nodeSyncTimer.current);
+    nodeSyncTimer.current = setTimeout(() => {
+      syncTreeNodes(nodes.map(nodeToRow)).catch(console.error);
+    }, 300);
+  }
+
+  function scheduleSyncLinks(links: TreeLink[]) {
+    if (linkSyncTimer.current) clearTimeout(linkSyncTimer.current);
+    linkSyncTimer.current = setTimeout(() => {
+      syncTreeLinks(links.map(linkToRow)).catch(console.error);
+    }, 300);
+  }
+
+  // Load tree state from DB once it's ready
+  useEffect(() => {
+    if (!dbReady) return;
+    Promise.all([loadTreeNodes(), loadTreeLinks()])
+      .then(([nodeRows, linkRows]) => {
+        const loadedNodes = nodeRows.map(r => ({
+          id: r.id,
+          description: r.description,
+          x: r.x,
+          y: r.y,
+          done: r.done === 1,
+          taskId: r.task_id ?? undefined,
+        }));
+        const loadedLinks = linkRows.map(r => ({
+          id: r.id,
+          fromId: r.from_id,
+          toId: r.to_id,
+        }));
+        nodesRef.current = loadedNodes;
+        setNodes(loadedNodes);
+        setLinks(loadedLinks);
+      })
+      .catch(console.error);
+  }, [dbReady]);
+
+  // Keep nodesRef current so event handlers can sync without stale state
+  useEffect(() => { nodesRef.current = nodes; }, [nodes]);
 
   function handleNodeMouseEnter(id: number) {
     if (hoverLeaveTimer.current) clearTimeout(hoverLeaveTimer.current);
@@ -78,27 +137,48 @@ export default function TreeTab({ tasks, onTaskDone }: TreeTabProps) {
     const { w, h } = getWrapperSize();
     const cx = (w / 2 - pan.x) / zoom;
     const cy = (h / 2 - pan.y) / zoom;
-    setNodes(prev => [...prev, {
+    const newNode: TreeNode = {
       id: Date.now(),
       description,
       x: cx - NODE_W / 2,
       y: cy - NODE_H / 2,
       done: false,
-    }]);
+    };
+    setNodes(prev => {
+      const next = [...prev, newNode];
+      if (dbReady) scheduleSyncNodes(next);
+      return next;
+    });
   }
 
   function clearCanvas() {
     setNodes([]);
     setLinks([]);
+    if (dbReady) {
+      scheduleSyncNodes([]);
+      scheduleSyncLinks([]);
+    }
   }
 
   function toggleNodeDone(id: number) {
-    setNodes(prev => prev.map(n => n.id === id ? { ...n, done: !n.done } : n));
+    setNodes(prev => {
+      const next = prev.map(n => n.id === id ? { ...n, done: !n.done } : n);
+      if (dbReady) scheduleSyncNodes(next);
+      return next;
+    });
   }
 
   function deleteNode(id: number) {
-    setNodes(prev => prev.filter(n => n.id !== id));
-    setLinks(prev => prev.filter(l => l.fromId !== id && l.toId !== id));
+    setNodes(prev => {
+      const next = prev.filter(n => n.id !== id);
+      if (dbReady) scheduleSyncNodes(next);
+      return next;
+    });
+    setLinks(prev => {
+      const next = prev.filter(l => l.fromId !== id && l.toId !== id);
+      if (dbReady) scheduleSyncLinks(next);
+      return next;
+    });
   }
 
   function handleWrapperPointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -129,9 +209,14 @@ export default function TreeTab({ tasks, onTaskDone }: TreeTabProps) {
   }
 
   function handleWrapperPointerUp() {
+    const wasDraggingNode = draggingRef.current !== null;
     panningRef.current = false;
     setIsPanning(false);
     draggingRef.current = null;
+    // Sync node positions after drag ends (nodesRef has the latest positions)
+    if (wasDraggingNode && dbReady) {
+      scheduleSyncNodes(nodesRef.current);
+    }
   }
 
   function handleNodePointerDown(e: React.PointerEvent<HTMLDivElement>, node: TreeNode) {
@@ -153,7 +238,11 @@ export default function TreeTab({ tasks, onTaskDone }: TreeTabProps) {
           (l.fromId === nodeId && l.toId === linkPhase.sourceId)
         );
         if (!dup) {
-          setLinks(prev => [...prev, { id: Date.now(), fromId: linkPhase.sourceId, toId: nodeId }]);
+          setLinks(prev => {
+            const next = [...prev, { id: Date.now(), fromId: linkPhase.sourceId, toId: nodeId }];
+            if (dbReady) scheduleSyncLinks(next);
+            return next;
+          });
         }
       }
       setLinkPhase({ phase: "idle" });
@@ -258,7 +347,14 @@ export default function TreeTab({ tasks, onTaskDone }: TreeTabProps) {
                 <g
                   className="tree-link-delete"
                   transform={`translate(${geo.midX}, ${geo.midY})`}
-                  onClick={e => { e.stopPropagation(); setLinks(prev => prev.filter(l => l.id !== link.id)); }}
+                  onClick={e => {
+                    e.stopPropagation();
+                    setLinks(prev => {
+                      const next = prev.filter(l => l.id !== link.id);
+                      if (dbReady) scheduleSyncLinks(next);
+                      return next;
+                    });
+                  }}
                   style={{ cursor: "pointer" }}
                 >
                   <circle r={8 / zoom} fill="var(--bg-elevated)" stroke="var(--border)" strokeWidth={1 / zoom} />
@@ -299,7 +395,6 @@ export default function TreeTab({ tasks, onTaskDone }: TreeTabProps) {
               onMouseEnter={() => handleNodeMouseEnter(node.id)}
               onMouseLeave={handleNodeMouseLeave}
             >
-              {/* Task text — fills available width */}
               <input
                 className="tree-node-input"
                 value={node.description}
@@ -311,17 +406,21 @@ export default function TreeTab({ tasks, onTaskDone }: TreeTabProps) {
                   setNodes(prev => prev.map(n => n.id === node.id ? { ...n, description: val } : n));
                 }}
                 onPointerDown={e => e.stopPropagation()}
-                onBlur={() => setEditingNodeId(null)}
+                onBlur={() => {
+                  setEditingNodeId(null);
+                  if (dbReady) scheduleSyncNodes(nodesRef.current);
+                }}
                 onKeyDown={e => {
                   if (e.key === "Escape" || e.key === "Enter") {
                     e.preventDefault();
                     setEditingNodeId(null);
+                    if (dbReady) scheduleSyncNodes(nodesRef.current);
                   }
                 }}
                 ref={el => { if (el) inputRefs.current.set(node.id, el); else inputRefs.current.delete(node.id); }}
               />
 
-              {/* ✓ done — inline right side, work-tab style; always takes space to prevent layout shift */}
+              {/* ✓ done — inline right side; always takes space to prevent layout shift */}
               <button
                 className={`tree-node-done-btn${nodeDone ? " tree-node-done-active" : ""}`}
                 style={{ visibility: (isHovered && !isLinking) || nodeDone ? "visible" : "hidden" }}
@@ -333,7 +432,7 @@ export default function TreeTab({ tasks, onTaskDone }: TreeTabProps) {
                 }}
               >✓</button>
 
-              {/* [≡][✕] buttons + picker dropdown — float below the node on hover */}
+              {/* [≡][✕] buttons + picker dropdown — float below node on hover */}
               {showBelow && (
                 <div
                   className="tree-node-below"
@@ -365,9 +464,13 @@ export default function TreeTab({ tasks, onTaskDone }: TreeTabProps) {
                             key={t.id}
                             className="tree-pick-option"
                             onClick={() => {
-                              setNodes(prev => prev.map(n =>
-                                n.id === node.id ? { ...n, description: t.description, taskId: t.id } : n
-                              ));
+                              setNodes(prev => {
+                                const next = prev.map(n =>
+                                  n.id === node.id ? { ...n, description: t.description, taskId: t.id } : n
+                                );
+                                if (dbReady) scheduleSyncNodes(next);
+                                return next;
+                              });
                               setPickingNodeId(null);
                             }}
                           >

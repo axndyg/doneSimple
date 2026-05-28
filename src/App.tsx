@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import TreeTab from "./TreeTab";
+import {
+  initDb, loadTasks, loadHistory, syncTasks, syncHistory,
+  TaskRow, HistoryRow,
+} from "./db";
 
 type Tab = "todo" | "tree" | "work" | "history";
 
@@ -28,6 +32,27 @@ const DEFAULT_BREAK_SUGGESTIONS = [
   "Take some deep breaths",
 ];
 
+function toTaskRows(tasks: Task[], dismissed: number[]): TaskRow[] {
+  return tasks.map(t => ({
+    id: t.id,
+    description: t.description,
+    recurring: t.recurring ? 1 : 0,
+    done: t.done ? 1 : 0,
+    num_repeated: t.num_repeated,
+    done_date: t.doneDate ?? null,
+    work_dismissed: dismissed.includes(t.id) ? 1 : 0,
+  }));
+}
+
+function toHistoryRows(history: HistoryEntry[]): HistoryRow[] {
+  return history.map(h => ({
+    id: h.id,
+    description: h.description,
+    date_done: h.dateDone,
+    recurrence_count: h.recurrenceCount,
+  }));
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>("todo");
   const [darkMode, setDarkMode] = useState(false);
@@ -36,6 +61,7 @@ function App() {
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [focusId, setFocusId] = useState<number | null>(null);
   const [workDismissed, setWorkDismissed] = useState<number[]>([]);
+  const [dbReady, setDbReady] = useState(false);
 
   const [timerSeconds, setTimerSeconds] = useState(30 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -50,6 +76,55 @@ function App() {
   const [currentBreakSuggestion, setCurrentBreakSuggestion] = useState("");
   const [breakSuggestions, setBreakSuggestions] = useState<string[]>(DEFAULT_BREAK_SUGGESTIONS);
   const [showBreakEditor, setShowBreakEditor] = useState(false);
+
+  // Load all data from SQLite on first mount
+  useEffect(() => {
+    initDb()
+      .then(() => Promise.all([loadTasks(), loadHistory()]))
+      .then(([taskRows, historyRows]) => {
+        const dismissed = taskRows.filter(r => r.work_dismissed === 1).map(r => r.id);
+        setTasks(taskRows.map(r => ({
+          id: r.id,
+          description: r.description,
+          recurring: r.recurring === 1,
+          done: r.done === 1,
+          num_repeated: r.num_repeated,
+          doneDate: r.done_date ?? undefined,
+        })));
+        setHistory(historyRows.map(r => ({
+          id: r.id,
+          description: r.description,
+          dateDone: r.date_done,
+          recurrenceCount: r.recurrence_count,
+        })));
+        setWorkDismissed(dismissed);
+        setDbReady(true);
+      })
+      .catch(console.error);
+  }, []);
+
+  const taskSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const historySyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced task sync — prevents concurrent DELETE+INSERT race conditions
+  useEffect(() => {
+    if (!dbReady) return;
+    if (taskSyncTimer.current) clearTimeout(taskSyncTimer.current);
+    const rows = toTaskRows(tasks, workDismissed);
+    taskSyncTimer.current = setTimeout(() => {
+      syncTasks(rows).catch(console.error);
+    }, 300);
+  }, [tasks, workDismissed, dbReady]);
+
+  // Debounced history sync
+  useEffect(() => {
+    if (!dbReady) return;
+    if (historySyncTimer.current) clearTimeout(historySyncTimer.current);
+    const rows = toHistoryRows(history);
+    historySyncTimer.current = setTimeout(() => {
+      syncHistory(rows).catch(console.error);
+    }, 300);
+  }, [history, dbReady]);
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -106,10 +181,10 @@ function App() {
   }
 
   function toggleRecurring(id: number) {
-    const task = tasks.find(t => t.id == id); 
+    const task = tasks.find(t => t.id == id);
     if (!task) return;
     setTasks(prev => prev.map(t => t.id === id ? { ...t, recurring: !t.recurring } : t));
-    if (task.done) { 
+    if (task.done) {
         setHistory(prev => [...prev, {
         id: Date.now(),
         description: task.description,
@@ -133,6 +208,8 @@ function App() {
         setTasks(prev => prev.map(t => t.id === id
           ? { ...t, done: false, num_repeated: Math.max(0, t.num_repeated - 1), doneDate: undefined }
           : t));
+        // Restore to work tab when unmarked
+        setWorkDismissed(prev => prev.filter(d => d !== id));
       }
     } else {
       setHistory(prev => [...prev, {
@@ -147,6 +224,7 @@ function App() {
 
   function deleteTask(id: number) {
     setTasks(prev => prev.filter(t => t.id !== id));
+    setWorkDismissed(prev => prev.filter(d => d !== id));
   }
 
   // Used by tree tab: recurring tasks get full toggle; non-recurring get soft done (no archive).
@@ -163,14 +241,15 @@ function App() {
         setTasks(prev => prev.map(t => t.id === id
           ? { ...t, done: false, num_repeated: Math.max(0, t.num_repeated - 1), doneDate: undefined }
           : t));
+        setWorkDismissed(prev => prev.filter(d => d !== id));
       }
     } else {
       setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
     }
   }
 
-  function deleteHistory(id: number) { 
-    setHistory(prev => prev.filter(t => t.id !==id)); 
+  function deleteHistory(id: number) {
+    setHistory(prev => prev.filter(t => t.id !== id));
   }
 
   function workDone(id: number) {
@@ -344,6 +423,7 @@ function App() {
         <TreeTab
           tasks={tasks.map(t => ({ id: t.id, description: t.description, done: t.done }))}
           onTaskDone={markTaskDoneFromTree}
+          dbReady={dbReady}
         />
       </div>
       {activeTab === "work" && (
