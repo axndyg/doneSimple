@@ -111,18 +111,22 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 - [x] Tree tab: clear button wipes all nodes and links
 - [x] Tree ↔ to-do sync: ≡ picker links a node to a to-do task; ✓ soft-marks non-recurring done (no archive), fully toggles recurring; to-do ✓ remains the archive step
 - [x] To-do "done" column: replaced native checkbox with ✓ button matching work/tree style
+- [x] SQLite persistence via tauri-plugin-sql — tasks, history, workDismissed, tree nodes/links all survive restarts
+- [x] Debounced sync (300ms) + INSERT OR REPLACE to prevent concurrent write race conditions
+- [x] Dark mode preference persists via localStorage
+- [x] dS logo in tab bar + full icon set generated for dock, Finder, Windows, iOS, Android
+- [x] .gitignore added — local SQLite DB and build artifacts never tracked in repo
+- [x] Dark mode color transition lag fixed: explicit color: var(--text-primary) on td + unified 0.2s timing
+- [x] Drag-to-reorder tasks in to-do tab (mouse-event based, avoids WebKit HTML5 DnD bug); syncs to work tab automatically
+- [x] GitHub Release v0.1.0 published with .dmg for Apple Silicon; README with download instructions
 
 ### Problems to Polish
-- [ ] workDismissed (recurring tasks hidden from work tab) resets on restart — resolved by SQLite integration
 - [ ] No visual feedback when done is denied on an unnamed task
 
 ### Future Steps
-1. Integrate SQLite (src/db.ts) for cross-session state persistence
-2. CSV export for history tab
-3. Add doneSimple logo
-4. Add doneSimple documentation for the README.md + how to download locally
-5. Build and install doneSimple as a native local app — `npm run tauri build` produces a signed .dmg/installer so the app launches from Spotlight/dock without `npm run tauri dev`
-6. Add "link" tab between "work" and "history" — an infinite canvas grid where tasks can be dropped and visually connected with lines (flowchart-style), showing dependencies or sequences between tasks; design TBD
+1. CSV export for history tab
+2. Build and distribute signed .app — requires Apple Developer account ($99/yr) to avoid Gatekeeper warnings for other users
+3. Add "link" tab between "work" and "history" — an infinite canvas grid where tasks can be dropped and visually connected with lines (flowchart-style), showing dependencies or sequences between tasks; design TBD
 
 ## Session History
 ### Session 1 — 2026-05-25
@@ -143,3 +147,6 @@ Three bug fixes and one feature: (1) recurring task unmarked in to-do tab now re
 
 ### Session 6 — 2026-05-28
 Tree tab node controls redesigned: inline ✓ done button (work-tab style, visibility-hidden to prevent layout shift), ≡ task picker and ✕ delete float below node on hover with 150ms debounced hide so buttons are reachable across the gap. Canvas drag-to-pan activated on any background mousedown without requiring mode switch; canvas state preserved across tab switches via always-mounted hidden div. Cross-tab sync: ≡ picker stores taskId on node; ✓ on linked node soft-marks non-recurring tasks done (no archive) and fully toggles recurring tasks; to-do ✓ remains the commit-to-history step. To-do "done" column replaced with ✓ button for visual consistency across all tabs. Clear button wipes all nodes and links from the canvas.
+
+### Session 7 — 2026-05-28
+Full SQLite persistence wired via tauri-plugin-sql: tasks (including workDismissed flag), history, and tree nodes/links all survive restarts. Concurrent write race condition (UNIQUE constraint) fixed with INSERT OR REPLACE + 300ms debounce on sync effects. Dark mode preference persisted in localStorage. dS logo added to tab bar; full icon set generated for all platforms via `npx tauri icon`. .gitignore created. Dark mode transition lag fixed by adding explicit CSS variable color to td elements. Drag-to-reorder implemented with mouse events (HTML5 DnD dropped — unreliable in WebKit/Tauri). GitHub Release v0.1.0 published with Apple Silicon .dmg; README rewritten with download and build-from-source instructions.
