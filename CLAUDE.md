@@ -126,6 +126,7 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 
 ### Problems to Polish
 - [ ] No visual feedback when done is denied on an unnamed task
+- [ ] Persistent issues with the notification system, does not currently function
 
 ### Future Steps
 1. CSV export for history tab
