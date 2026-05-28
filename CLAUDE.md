@@ -10,10 +10,10 @@ this file without explicit user approval.
 Append to your first response each session and to any response where
 you have pending CLAUDE.md changes:
 
-  — type "quit" to review and approve session changes to CLAUDE.md
+  — type "lets quit" to review and approve session changes to CLAUDE.md
 
 Trigger on: (1) first response of the session, (2) any response with
-accumulated proposed changes. On "quit": surface changes as an itemized
+accumulated proposed changes. On "lets quit": git  changes as an itemized
 list and wait for explicit approval before writing.
 
 ## Model Directive
@@ -159,6 +159,3 @@ Full SQLite persistence wired via tauri-plugin-sql: tasks (including workDismiss
 
 ### Session 8 — 2026-05-28
 Implemented future steps 1–4. Recurring pill now opens a fixed-position day-picker popover with M T W T F S S circular chips; pill always shows "yes/no", selected days stored in SQLite as JSON; picker uses position: fixed + getBoundingClientRect to escape scroll-container clipping, clamped 16px from viewport edge, resize-reactive via window resize listener. System notification wired via tauri-plugin-notification (fires on timer end; requires bundled .app — permission request is a no-op in dev mode). dS logo moved to tab-bar far right and made the dark/light toggle, removing the old N/L button. Delete ✕ buttons now always rendered at low opacity instead of hidden. Released as v0.2.0.
-
-### Session 9 — 2026-05-28
-Fixed notification system — two root causes identified: (1) bundle ID `com.doneSimple.app` ended in `.app`, conflicting with macOS's app bundle extension and silently preventing Notification Center registration; fixed to `com.axndyg.donesimple`. (2) `notification:default` capability does not include `sendNotification` — the missing `notification:allow-notify` permission caused Tauri's IPC layer to silently drop all send calls. Debug process: added console logging around permission check and send call, confirmed permission was granted but send was being dropped, identified correct permission name from build error output. Also improved tree node visual contrast in light mode (border #c0c0c0, deeper shadow) and dark mode (background #303030, border #505050). Released as v0.3.1.

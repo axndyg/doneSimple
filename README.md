@@ -34,6 +34,7 @@ After that first step it opens normally every time.
 - Your top 5 pending tasks at a glance
 - Countdown timer (default 30 min), adjustable in 5-min steps
 - Timer completion overlay with break suggestions (customisable)
+- Notification for visual alert once timer is over if tabbed out of application (requires notification permissions)
 
 **Tree tab**
 - Infinite canvas — add nodes, draw Bézier links between them
