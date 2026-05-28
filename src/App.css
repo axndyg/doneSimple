@@ -59,6 +59,11 @@
   color: var(--text-primary);
 }
 
+/* Smooth mode transition — applies to every element inside .app */
+.app, .app * {
+  transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease;
+}
+
 /* Tab bar */
 .tab-bar {
   display: flex;
@@ -87,18 +92,25 @@
   border-bottom-color: var(--text-primary);
 }
 
-/* Night mode toggle — pushed to far right */
+/* Night mode toggle — circular, pushed to far right */
 .night-toggle {
   margin-left: auto;
-  padding: 6px 14px;
-  margin-right: 12px;
+  margin-right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   border: 1px solid var(--border);
-  border-radius: 4px;
   background: none;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 600;
   font-family: inherit;
   color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0;
 }
 
 .night-toggle:hover {

@@ -250,7 +250,7 @@ function App() {
         <button className={`tab-btn${activeTab === "todo" ? " active" : ""}`} onClick={() => setActiveTab("todo")}>to do</button>
         <button className={`tab-btn${activeTab === "work" ? " active" : ""}`} onClick={() => setActiveTab("work")}>work</button>
         <button className={`tab-btn${activeTab === "history" ? " active" : ""}`} onClick={() => setActiveTab("history")}>history</button>
-        <button className="night-toggle" onClick={() => setDarkMode(d => !d)}>{darkMode ? "day" : "night"}</button>
+        <button className="night-toggle" onClick={() => setDarkMode(d => !d)}>{darkMode ? "L" : "N"}</button>
       </nav>
 
      {activeTab === "todo" && (
