@@ -16,3 +16,7 @@ src-tauri/target/
 # env / secrets
 .env
 .env.local
+
+# personal learning docs
+LESSONPLAN.md
+GROWTH.md
