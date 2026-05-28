@@ -96,14 +96,23 @@ function App() {
   const [tasksCompletedThisSession, setTasksCompletedThisSession] = useState<string[]>([]);
   const [showOverlay, setShowOverlay] = useState(false);
   const [currentBreakSuggestion, setCurrentBreakSuggestion] = useState("");
-  const [breakSuggestions, setBreakSuggestions] = useState<string[]>(DEFAULT_BREAK_SUGGESTIONS);
+  const [breakSuggestions, setBreakSuggestions] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("breakSuggestions");
+      return saved ? JSON.parse(saved) : DEFAULT_BREAK_SUGGESTIONS;
+    } catch {
+      return DEFAULT_BREAK_SUGGESTIONS;
+    }
+  });
   const [showBreakEditor, setShowBreakEditor] = useState(false);
 
-  // Request notification permission on first mount so the dialog isn't surprising
+  // Request notification permission on mount; store result so timer can use it without re-checking
+  const notifPermittedRef = useRef(false);
   useEffect(() => {
-    isPermissionGranted().then(granted => {
-      if (!granted) requestPermission().catch(() => {});
-    }).catch(() => {});
+    isPermissionGranted()
+      .then(granted => granted ? "granted" : requestPermission())
+      .then(status => { notifPermittedRef.current = status === "granted"; })
+      .catch(() => {});
   }, []);
 
   // Close recur picker when clicking outside of it
@@ -183,6 +192,11 @@ function App() {
   const taskSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historySyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Persist break suggestions to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("breakSuggestions", JSON.stringify(breakSuggestions));
+  }, [breakSuggestions]);
+
   // Debounced task sync — prevents concurrent DELETE+INSERT race conditions
   useEffect(() => {
     if (!dbReady) return;
@@ -212,9 +226,9 @@ function App() {
       setCurrentBreakSuggestion(breakSuggestions[idx] ?? "Take a break");
       setShowOverlay(true);
       // Fire system notification so user knows even if they're in another app
-      isPermissionGranted().then(granted => {
-        if (granted) sendNotification({ title: "doneSimple", body: "Timer's up — take a break!" });
-      }).catch(() => {});
+      if (notifPermittedRef.current) {
+        sendNotification({ title: "doneSimple", body: "Timer's up — take a break!" });
+      }
       return;
     }
     const id = setInterval(() => {
@@ -603,7 +617,14 @@ function App() {
               </div>
             </div>
             <div className="work-tasks">
-              <h3>recent tasks</h3>
+              <div className="work-tasks-header">
+                <h3>recent tasks</h3>
+                <button
+                  className="overlay-icon-btn"
+                  onClick={() => setShowBreakEditor(true)}
+                  title="edit break suggestions"
+                >⚙</button>
+              </div>
               <div className="work-task-scroll">
                 <ul>
                   {tasks.filter(t => !workDismissed.includes(t.id) && t.description && !t.done).slice(0, 5).map(t => (

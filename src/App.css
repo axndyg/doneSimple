@@ -442,6 +442,22 @@
   min-height: 0;
 }
 
+.work-tasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.work-tasks-header h3 {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+  margin-bottom: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .work-tasks h3 {
   font-size: 11px;
   color: var(--text-dim);
