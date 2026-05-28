@@ -123,10 +123,11 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 - [x] System notification fires when timer hits 0 via tauri-plugin-notification (permission requested on mount; requires bundled .app — not triggered in dev mode)
 - [x] dS logo moved to top-right of tab bar and now doubles as dark/light mode toggle; separate N/L button removed
 - [x] Delete ✕ buttons always visible at low opacity across to-do and history tabs, full opacity + red on hover
+- [x] Notification system fixed: bundle ID corrected (com.doneSimple.app → com.axndyg.donesimple) and notification:allow-notify capability added; notifications now fire reliably when timer hits 0
+- [x] Tree node contrast improved: stronger border + shadow in both light and dark mode so nodes pop against the canvas background
 
 ### Problems to Polish
 - [ ] No visual feedback when done is denied on an unnamed task
-- [ ] Persistent issues with the notification system, does not currently function
 
 ### Future Steps
 1. CSV export for history tab
@@ -158,3 +159,6 @@ Full SQLite persistence wired via tauri-plugin-sql: tasks (including workDismiss
 
 ### Session 8 — 2026-05-28
 Implemented future steps 1–4. Recurring pill now opens a fixed-position day-picker popover with M T W T F S S circular chips; pill always shows "yes/no", selected days stored in SQLite as JSON; picker uses position: fixed + getBoundingClientRect to escape scroll-container clipping, clamped 16px from viewport edge, resize-reactive via window resize listener. System notification wired via tauri-plugin-notification (fires on timer end; requires bundled .app — permission request is a no-op in dev mode). dS logo moved to tab-bar far right and made the dark/light toggle, removing the old N/L button. Delete ✕ buttons now always rendered at low opacity instead of hidden. Released as v0.2.0.
+
+### Session 9 — 2026-05-28
+Fixed notification system — two root causes identified: (1) bundle ID `com.doneSimple.app` ended in `.app`, conflicting with macOS's app bundle extension and silently preventing Notification Center registration; fixed to `com.axndyg.donesimple`. (2) `notification:default` capability does not include `sendNotification` — the missing `notification:allow-notify` permission caused Tauri's IPC layer to silently drop all send calls. Debug process: added console logging around permission check and send call, confirmed permission was granted but send was being dropped, identified correct permission name from build error output. Also improved tree node visual contrast in light mode (border #c0c0c0, deeper shadow) and dark mode (background #303030, border #505050). Released as v0.3.1.
