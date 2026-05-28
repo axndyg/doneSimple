@@ -55,7 +55,7 @@ function toHistoryRows(history: HistoryEntry[]): HistoryRow[] {
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>("todo");
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("darkMode") === "true");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
@@ -347,11 +347,12 @@ function App() {
   return (
     <div className={`app${darkMode ? " dark" : ""}`}>
       <nav className="tab-bar">
+        <div className="app-logo">dS</div>
         <button className={`tab-btn${activeTab === "todo" ? " active" : ""}`} onClick={() => setActiveTab("todo")}>to do</button>
         <button className={`tab-btn${activeTab === "tree" ? " active" : ""}`} onClick={() => setActiveTab("tree")}>tree</button>
         <button className={`tab-btn${activeTab === "work" ? " active" : ""}`} onClick={() => setActiveTab("work")}>work</button>
         <button className={`tab-btn${activeTab === "history" ? " active" : ""}`} onClick={() => setActiveTab("history")}>history</button>
-        <button className="night-toggle" onClick={() => setDarkMode(d => !d)}>{darkMode ? "L" : "N"}</button>
+        <button className="night-toggle" onClick={() => setDarkMode(d => { localStorage.setItem("darkMode", String(!d)); return !d; })}>{darkMode ? "L" : "N"}</button>
       </nav>
 
      {activeTab === "todo" && (
