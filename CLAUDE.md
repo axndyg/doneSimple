@@ -106,11 +106,15 @@ require no onboarding. CSS kept simple — user background is basic HTML/CSS.
 - [x] Work tab: unmarking a recurring done task in the to-do tab now restores it in the work tab (cleared workDismissed on toggle)
 - [x] History tab: individual row deletion via hover-reveal ✕ button
 - [x] Dark mode (night/day toggle) on tab bar far right, implemented via CSS custom properties
+- [x] Tree tab: node controls — inline ✓ done button (work-tab style), ≡ task picker + ✕ delete floating below node on hover with debounced hide
+- [x] Tree tab: drag-to-pan on canvas background without mode switching; canvas state persists across tab switches
+- [x] Tree tab: clear button wipes all nodes and links
+- [x] Tree ↔ to-do sync: ≡ picker links a node to a to-do task; ✓ soft-marks non-recurring done (no archive), fully toggles recurring; to-do ✓ remains the archive step
+- [x] To-do "done" column: replaced native checkbox with ✓ button matching work/tree style
 
 ### Problems to Polish
 - [ ] workDismissed (recurring tasks hidden from work tab) resets on restart — resolved by SQLite integration
 - [ ] No visual feedback when done is denied on an unnamed task
-- [ ] a recurring task completed in the work tab will not mark it as done in the main tab 
 
 ### Future Steps
 1. Integrate SQLite (src/db.ts) for cross-session state persistence
@@ -136,3 +140,6 @@ Timer completion overlay implemented: pre-built suggestions (walk outside, stret
 
 ### Session 4 — 2026-05-27
 Three bug fixes and one feature: (1) recurring task unmarked in to-do tab now reappears in work tab — toggleDone clears workDismissed; (2) history tab hover-reveal ✕ delete wired up with missing onMouseEnter/onMouseLeave handlers; (3) dark mode implemented via CSS custom properties — single .dark class on .app flips all tokens; (4) link tab concept logged as future step.
+
+### Session 6 — 2026-05-28
+Tree tab node controls redesigned: inline ✓ done button (work-tab style, visibility-hidden to prevent layout shift), ≡ task picker and ✕ delete float below node on hover with 150ms debounced hide so buttons are reachable across the gap. Canvas drag-to-pan activated on any background mousedown without requiring mode switch; canvas state preserved across tab switches via always-mounted hidden div. Cross-tab sync: ≡ picker stores taskId on node; ✓ on linked node soft-marks non-recurring tasks done (no archive) and fully toggles recurring tasks; to-do ✓ remains the commit-to-history step. To-do "done" column replaced with ✓ button for visual consistency across all tabs. Clear button wipes all nodes and links from the canvas.
